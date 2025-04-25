@@ -1,16 +1,87 @@
-import React, { useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-
+import './VistaPrincipal.css';
 
 const mensajesGuardados = [
-  { texto: "aaaaaaaaaaaaaaaaaaaaaa", velocidad: "x1" },
-  { texto: "eeeeeeeeeeeeeeeeeeeee", velocidad: "x3.5" },
+  { texto: "Primer mensaje de ejemplo", velocidad: "x3" },
+  { texto: "Segundo mensaje de prueba", velocidad: "x3.5" },
 ];
-
 
 export default function VistaPrincipal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
+  const [mensajes] = useState(mensajesGuardados); // Lista fija de mensajes
+  const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
+
+  const marqueeRef = useRef(null);
+  const [duration, setDuration] = useState(null);
+
+  // Obtener el mensaje actual si existe
+  const mensajeTexto = mensajeActual !== null ? mensajes[mensajeActual].texto : "";
+  const mensajeVelocidad = mensajeActual !== null ? mensajes[mensajeActual].velocidad : "x1";
+
+  // Función para actualizar el mensaje actual
+  const actualizarMensaje = () => {
+    if (seleccionado !== null) {
+      setMensajeActual(seleccionado);
+      setSeleccionado(null); // Limpiar selección
+    }
+  };
+
+  // Función para limpiar el tablero
+  const limpiarTablero = () => {
+    setMensajeActual(null);
+    setSeleccionado(null);
+  };
+
+  // Función para manejar selección única
+  const seleccionarMensaje = (index) => {
+    setSeleccionado(seleccionado === index ? null : index);
+  };
+
+  useEffect(() => {
+    const calcularDuracion = () => {
+      const el = marqueeRef.current;
+      if (el && mensajeActual !== null) {
+        const textWidth = el.scrollWidth;
+        const containerWidth = el.parentElement.offsetWidth;
+
+        const factorVelocidad = parseFloat(mensajeVelocidad.replace("x", "")) || 1;
+        
+        // Distancia total que debe recorrer el texto
+        const distanciaTotal = textWidth + containerWidth;
+        
+        // Calculamos la duración basada en la relación distancia/tiempo
+        const duracionAjustada = (distanciaTotal / (containerWidth * 0.1)) * (1 / factorVelocidad);
+        
+        setDuration(duracionAjustada);
+        
+        // Forzar reinicio de la animación para aplicar cambios
+        el.style.animation = 'none';
+        void el.offsetHeight; // Trigger reflow
+        el.style.animation = `marquee ${duracionAjustada}s linear infinite`;
+      }
+    };
+  
+    // Ejecutar inicialmente y al cambiar tamaño
+    calcularDuracion();
+    const debouncedResize = debounce(calcularDuracion, 100);
+    window.addEventListener('resize', debouncedResize);
+    
+    return () => {
+      window.removeEventListener('resize', debouncedResize);
+    };
+  }, [mensajeTexto, mensajeVelocidad, mensajeActual]);
+  
+  // Función debounce para optimizar
+  function debounce(func, wait) {
+    let timeout;
+    return function() {
+      clearTimeout(timeout);
+      timeout = setTimeout(func, wait);
+    };
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
@@ -26,26 +97,49 @@ export default function VistaPrincipal() {
       )}
 
       <main className="pt-6 px-4">
-        {/* Aquí va tu contenido principal */}
         <h1 className="text-2xl font-bold">Bienvenido Profesor</h1>
         <span className="font-normal">Rodrigo Domínguez</span>
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
-        <div className="bg-black text-red-600 text-6xl font-mono px-6 py-4 rounded-lg border-8 border-gray-400 shadow-inner text-center">
-          {mensajesGuardados[0].texto}
+        <div className="marquee-container">
+          {mensajeActual !== null ? (
+            <div
+                ref={marqueeRef}
+                className="marquee-text"
+                style={{
+                  animation: duration ? `marquee ${duration}s linear infinite` : "none", minWidth: 'fit-content'
+                }}
+              >
+                {mensajeTexto}
+            </div>
+          ) : (
+            <div className="marquee-text text-gray-500">Tablero vacío</div>
+          )}
         </div>
 
         <div className="flex justify-center mt-6 gap-4">
-          <button className="bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md">
+          <button 
+            className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md ${
+              seleccionado === null ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={actualizarMensaje}
+            disabled={seleccionado === null}
+          >
             ACTUALIZAR MENSAJE
           </button>
-          <button className="bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md">
-            BORRAR MENSAJE
+          <button 
+            className={`bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md ${
+              mensajeActual === null ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={limpiarTablero}
+            disabled={mensajeActual === null}
+          >
+            LIMPIAR TABLERO
           </button>
         </div>
 
         <h2 className="text-2xl font-bold mt-10 mb-4">Mensajes Guardados</h2>
         <table className="w-full text-left bg-white rounded-lg shadow-md overflow-hidden">
-          <thead className="bg-[#109d95] text-white ">
+          <thead className="bg-[#109d95] text-white">
             <tr className="text-center">
               <th className="py-2">Selección</th>
               <th>Texto</th>
@@ -53,10 +147,18 @@ export default function VistaPrincipal() {
             </tr>
           </thead>
           <tbody>
-            {mensajesGuardados.map((msg, idx) => (
-              <tr key={idx} className="border-t border-gray-200 hover:bg-[#f4f9f9]">
-                <td className="py-2 px-4">
-                  <input type="checkbox" className="form-checkbox text-[#109d95]" />
+            {mensajes.map((msg, idx) => (
+              <tr 
+                key={idx} 
+                className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${
+                  seleccionado === idx ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => seleccionarMensaje(idx)}
+              >
+                <td className="py-2 px-4 text-center">
+                  <div className={`w-5 h-5 rounded-full border-2 mx-auto ${
+                    seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'
+                  }`} />
                 </td>
                 <td>{msg.texto}</td>
                 <td>{msg.velocidad}</td>
@@ -66,7 +168,7 @@ export default function VistaPrincipal() {
         </table>
         <div className="flex justify-center mt-6">
           <button className="bg-black text-white px-6 py-2 rounded-full">
-            AGREGAR
+            AGREGAR NUEVO MENSAJE
           </button>
         </div>
       </main>
