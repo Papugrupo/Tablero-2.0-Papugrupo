@@ -2,20 +2,33 @@ import React, { useRef, useEffect, useState } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
+import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
 
 const mensajesGuardados = [
   { texto: "Primer mensaje de ejemplo", velocidad: "x3" },
   { texto: "Segundo mensaje de prueba", velocidad: "x3.5" },
 ];
 
+// Main component with MQTT Provider wrapper
 export default function VistaPrincipal() {
+  return (
+    <MqttProvider>
+      <VistaPrincipalContent />
+    </MqttProvider>
+  );
+}
+
+// Content component that uses MQTT
+function VistaPrincipalContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
   const [mensajes] = useState(mensajesGuardados); // Lista fija de mensajes
   const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
-
   const marqueeRef = useRef(null);
   const [duration, setDuration] = useState(null);
+
+  // Use MQTT context
+  const { isConnected, error, publish } = useMqtt();
 
   // Obtener el mensaje actual si existe
   const mensajeTexto = mensajeActual !== null ? mensajes[mensajeActual].texto : "";
@@ -25,6 +38,21 @@ export default function VistaPrincipal() {
   const actualizarMensaje = () => {
     if (seleccionado !== null) {
       setMensajeActual(seleccionado);
+      
+      // Publicar mensaje en MQTT cuando se actualiza
+      if (isConnected) {
+        const mensajeAPublicar = {
+          texto: mensajes[seleccionado].texto,
+          velocidad: mensajes[seleccionado].velocidad
+        };
+        
+        // Publicar en el tópico "mensaje/actualizar"
+        publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+        console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+      } else {
+        console.warn('❌ No se pudo publicar el mensaje: No hay conexión MQTT');
+      }
+      
       setSeleccionado(null); // Limpiar selección
     }
   };
@@ -33,6 +61,14 @@ export default function VistaPrincipal() {
   const limpiarTablero = () => {
     setMensajeActual(null);
     setSeleccionado(null);
+    
+    // Publicar mensaje de limpieza en MQTT
+    if (isConnected) {
+      publish('mensaje/actualizar', JSON.stringify({ comando: 'limpiar' }));
+      console.log('✅ Comando de limpieza publicado en MQTT');
+    } else {
+      console.warn('❌ No se pudo publicar el comando de limpieza: No hay conexión MQTT');
+    }
   };
 
   // Función para manejar selección única
@@ -99,6 +135,14 @@ export default function VistaPrincipal() {
       <main className="pt-6 px-4">
         <h1 className="text-2xl font-bold">Bienvenido Profesor</h1>
         <span className="font-normal">Rodrigo Domínguez</span>
+        
+        {/* Indicador de estado MQTT */}
+        <div className="flex items-center mt-2">
+          <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
+          {error && <span className="text-red-500 text-sm ml-2">({error})</span>}
+        </div>
+        
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
         <div className="marquee-container">
           {mensajeActual !== null ? (
