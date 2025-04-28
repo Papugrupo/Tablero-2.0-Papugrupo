@@ -10,11 +10,73 @@
   -moz-osx-font-smoothing: grayscale;
 
   /* Colores base del proyecto */
-  --color-principal: #109d95;
+  --color-primary: #109d95;
+  /* Azul claro (Base) */
+  --color-secondary: #AFCBFA;
+  /* Azul más saturado (para hovers o elementos secundarios) */
+  --color-dark: #508EF5;
+  /* Azul vibrante (para sombreado o bordes) */
+  --color-error: #FBE8DA;
+  /* Naranja pálido (para advertencias o errores) */
+  --color-light: #F4F9FB;
+  /* Color suave para fondos o elementos neutros */
+  --color-darkNeutral: #1F2A44;
+
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+}
+
+/* 🚀 Clases utilitarias personalizadas */
+@layer utilities {
+  .bg-primary {
+    background-color: var(--color-primary);
+  }
+
+  .bg-secondary {
+    background-color: var(--color-secondary);
+  }
+
+  .bg-dark {
+    background-color: var(--color-dark);
+  }
+
+  .bg-error {
+    background-color: var(--color-error);
+  }
+
+  .bg-light {
+    background-color: var(--color-light);
+  }
+
+  .bg-darkNeutral {
+    background-color: var(--color-darkNeutral);
+  }
+
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .text-dark {
+    color: var(--color-dark);
+  }
+
+  .text-error {
+    color: var(--color-error);
+  }
+
+  .text-light {
+    color: var(--color-light);
+  }
+
+  .text-darkNeutral {
+    color: var(--color-darkNeutral);
+  }
 }
