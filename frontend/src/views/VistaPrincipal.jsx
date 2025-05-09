@@ -28,6 +28,8 @@ function VistaPrincipalContent() {
   // ID del tablero (deberías obtenerlo de props o contexto)
   const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
 
+  
+
   // Estados para mensaje personalizado
   const [textoPersonalizado, setTextoPersonalizado] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
@@ -37,7 +39,7 @@ function VistaPrincipalContent() {
   const LIMITE_CARACTERES = 200;
 
   // Use MQTT context
-  const { isConnected, mqttError, publish } = useMqtt();
+  const { isConnected, mqttError, publish, reconnect, reconnectAttempts, connecting } = useMqtt();
 
   // Cargar mensajes al iniciar el componente
   useEffect(() => {
@@ -220,11 +222,20 @@ const actualizarMensaje = () => {
         <span className="font-normal">Rodrigo Domínguez</span>
 
         {/* Indicador de estado MQTT */}
-        <div className="flex items-center mt-2">
-          <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
-          {mqttError && <span className="text-red-500 text-sm ml-2">({mqttError})</span>}
-        </div>
+        <div className="flex items-center mt-2 space-x-2">
+  <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+  <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
+  {!isConnected && !connecting && (
+    <button 
+      onClick={reconnect}
+      disabled={connecting}
+      className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
+    >
+      {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
+    </button>
+  )}
+  {mqttError && <span className="text-red-500 text-sm ml-2">({mqttError})</span>}
+</div>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
         <div className="marquee-container">
