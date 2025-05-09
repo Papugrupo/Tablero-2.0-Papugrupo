@@ -28,7 +28,7 @@ jobs:
       run: cd frontend && npm run build
 
     - name: Create deploy archive (only content of dist/)
-      run: tar -czf dist.tar.gz -C dist .
+      run: tar -czf dist.tar.gz -C frontend/dist .
 
     - name: Upload archive to VPS
       uses: appleboy/scp-action@v0.1.7
