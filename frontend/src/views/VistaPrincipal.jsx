@@ -372,7 +372,7 @@ const actualizarMensaje = () => {
               </tr>
             </thead>
             <tbody>
-              {mensajes.map((msg, idx) => (
+              {/* {mensajes.map((msg, idx) => (
                 <tr
                   key={idx}
                   className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''
@@ -387,7 +387,7 @@ const actualizarMensaje = () => {
                   <td className="px-4">{msg.mensaje}</td>
                   <td className="px-4 text-center">x{msg.velocidad}</td>
                 </tr>
-              ))}
+              ))} */}
             </tbody>
           </table>
         )}
