@@ -25,7 +25,7 @@ jobs:
         echo "VITE_BROKER_MQTT_URL=${{ secrets.VITE_BROKER_MQTT_URL }}" >> .env
 
     - name: Build React project
-      run: npm run build
+      run: cd frontend && npm run build
 
     - name: Create deploy archive (only content of dist/)
       run: tar -czf dist.tar.gz -C dist .
