@@ -22,8 +22,14 @@ export default function VistaPrincipal() {
 function VistaPrincipalContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
-  const [mensajes] = useState(mensajesGuardados); // Lista fija de mensajes
+  const [mensajes, setMensajes] = useState(mensajesGuardados); // Lista fija de mensajes -> Lista dinámica
   const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
+  
+  // NUEVOS ESTADOS PARA EL MODAL
+  const [modalOpen, setModalOpen] = useState(false);
+  const [nuevoTexto, setNuevoTexto] = useState("");
+  const [nuevaVelocidad, setNuevaVelocidad] = useState("");
+  
   const marqueeRef = useRef(null);
   const [duration, setDuration] = useState(null);
 
@@ -74,6 +80,32 @@ function VistaPrincipalContent() {
   // Función para manejar selección única
   const seleccionarMensaje = (index) => {
     setSeleccionado(seleccionado === index ? null : index);
+  };
+
+  // NUEVA FUNCIÓN: Manejo para enviar el nuevo mensaje
+  const enviarNuevoMensaje = (e) => {
+    e.preventDefault();
+    if (nuevoTexto.trim() === "") return; // No se permiten mensajes vacíos
+
+    // Si se ingresó velocidad, debe ser un número entero o float
+    const velocidadInput = nuevaVelocidad.trim();
+    const regex = /^[0-9]+(\.[0-9]+)?$/;
+    if (velocidadInput !== "" && !regex.test(velocidadInput)) {
+      alert("La velocidad debe ser numérica, por ejemplo: 2 o 2.5");
+      return;
+    }
+    
+    // Si se ingresa velocidad, se le antepone la "x", caso contrario se usa "x1"
+    const velocidadFinal = velocidadInput === "" ? "x1" : `x${velocidadInput}`;
+    const nuevoMensaje = {
+      texto: nuevoTexto.trim(),
+      velocidad: velocidadFinal
+    };
+
+    setMensajes([...mensajes, nuevoMensaje]); // Agregar nuevo mensaje a la lista
+    setNuevoTexto("");
+    setNuevaVelocidad("");
+    setModalOpen(false);
   };
 
   useEffect(() => {
@@ -211,11 +243,66 @@ function VistaPrincipalContent() {
           </tbody>
         </table>
         <div className="flex justify-center mt-6">
-          <button className="bg-black text-white px-6 py-2 rounded-full">
+          {/* Se agrega el handler para abrir el modal */}
+          <button 
+            className="bg-black hover:bg-gray-800 text-white font-bold px-6 py-2 rounded-full cursor-pointer shadow-md transition-colors"
+            onClick={() => setModalOpen(true)}
+          >
             AGREGAR NUEVO MENSAJE
           </button>
         </div>
       </main>
+
+      {/* Modal para agregar nuevo mensaje */}
+      {modalOpen && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}   // Opacidad 15%
+        >
+          <div className="bg-white p-6 rounded-lg w-80">
+            <h3 className="text-xl font-bold mb-4">Nuevo Mensaje</h3>
+            <form onSubmit={enviarNuevoMensaje}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto">Texto</label>
+                <input
+                  id="mensaje-texto"
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  value={nuevoTexto}
+                  onChange={(e) => setNuevoTexto(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">Velocidad (opcional)</label>
+                <input
+                  id="mensaje-velocidad"
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  placeholder="Ej: 2.5"
+                  value={nuevaVelocidad}
+                  onChange={(e) => setNuevaVelocidad(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button 
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors"
+                >
+                  Agregar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
