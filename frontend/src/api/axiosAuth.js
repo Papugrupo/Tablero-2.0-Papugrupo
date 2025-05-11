@@ -11,7 +11,7 @@ const axiosAuth = axios.create({
 axiosAuth.interceptors.request.use(
   (config) => {
     //const token = Cookies.get('token');
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZFVzdWFyaW8iOiJkOWExMTgzMC01MDNkLTQwNzktOTczYi03Y2JmMWFmZTRmNGIiLCJpZEdydXBvIjoiN2FlMGFmNzItYjBmNS00YzgwLWFmNDUtOTFlYTVjMTVmNDM4IiwiaWF0IjoxNzQ2NzU2MDEzLCJleHAiOjE3NDY3NjMyMTN9.lOTyAKnUMX0_uf_RQGjiHJFjbuFVI6wgITdaaJ6lj6g";
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZFVzdWFyaW8iOiI5ODRkODQ1NC0zZWZhLTQ4ODctOThmZC1mZGM0NTM4ZDIyMTYiLCJpZEdydXBvIjoiODg3YzZlNzQtM2Y3Yy00ZTA2LTk1NjctNWIwYTE5YTA0YmMwIiwiaWF0IjoxNzQ2OTg2NTQ0LCJleHAiOjE3NDY5OTM3NDR9.Mum4Tc5YtIFscF0PnMCMF6I3bLTOWHzOfHnoZRGuEGA";
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

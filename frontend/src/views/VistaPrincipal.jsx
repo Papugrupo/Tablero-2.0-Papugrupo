@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes } from "../services/tablero.service"; // Import the API function to fetch messages
+import { obtenerMensajes, guardarMensaje } from "../services/tablero.service"; // Import the API functions
 
 // Main component with MQTT Provider wrapper
 export default function VistaPrincipal() {
@@ -32,7 +32,7 @@ function VistaPrincipalContent() {
   const [error, setError] = useState(null); // Estado para manejar errores
 
   // ID del tablero (deberías obtenerlo de props o contexto)
-  const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
+  const idTablero = "cbb674bc-82b7-435b-8146-571e12f94166"; // Cambiar según corresponda
 
   
 
@@ -165,7 +165,7 @@ const actualizarMensaje = () => {
   };
 
   // NUEVA FUNCIÓN: Manejo para enviar el nuevo mensaje
-  const enviarNuevoMensaje = (e) => {
+  const enviarNuevoMensaje = async (e) => {
     e.preventDefault();
     if (nuevoTexto.trim() === "") return; // No se permiten mensajes vacíos
 
@@ -176,18 +176,31 @@ const actualizarMensaje = () => {
       alert("La velocidad debe ser numérica, por ejemplo: 2 o 2.5");
       return;
     }
-    
-    // Si se ingresa velocidad, se le antepone la "x", caso contrario se usa "x1"
-    const velocidadFinal = velocidadInput === "" ? "x1" : `x${velocidadInput}`;
-    const nuevoMensaje = {
-      texto: nuevoTexto.trim(),
-      velocidad: velocidadFinal
-    };
 
-    setMensajes([...mensajes, nuevoMensaje]); // Agregar nuevo mensaje a la lista
-    setNuevoTexto("");
-    setNuevaVelocidad("");
-    setModalOpen(false);
+    // Si se ingresa velocidad, se le antepone la "x", caso contrario se usa "x1"
+    // Para el endpoint extraemos el número
+    const velocidadFinal = velocidadInput === "" ? 1 : parseFloat(velocidadInput);
+
+    try {
+        // Llama al endpoint para guardar el mensaje
+        const respuesta = await guardarMensaje({
+            idTableroRef: idTablero, // idTablero definido en el componente
+            mensaje: nuevoTexto.trim(),
+            velocidad: velocidadFinal
+        });
+        console.log("Respuesta del backend:", respuesta);
+
+        // Actualiza la lista de mensajes (por ejemplo, agregando el nuevo mensaje)
+        setMensajes([...mensajes, {
+            mensaje: respuesta.mensaje,
+            velocidad: velocidadFinal
+        }]);
+        setNuevoTexto("");
+        setNuevaVelocidad("");
+        setModalOpen(false);
+    } catch (error) {
+        alert("Error al guardar el mensaje. Revisa la consola para más información.");
+    }
   };
 
   useEffect(() => {
