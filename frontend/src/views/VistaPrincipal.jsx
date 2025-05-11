@@ -20,21 +20,21 @@ function VistaPrincipalContent() {
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
   const [mensajes, setMensajes] = useState([]); // Array de mensajes desde API
   const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
-  
+
   // NUEVOS ESTADOS PARA EL MODAL
   const [modalOpen, setModalOpen] = useState(false);
   const [nuevoTexto, setNuevoTexto] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
-  
+
   const marqueeRef = useRef(null);
   const [duration, setDuration] = useState(null);
   const [cargando, setCargando] = useState(true); // Estado para mostrar carga
   const [error, setError] = useState(null); // Estado para manejar errores
 
   // ID del tablero (deberías obtenerlo de props o contexto)
-  const idTablero = "cbb674bc-82b7-435b-8146-571e12f94166"; // Cambiar según corresponda
+  const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
 
-  
+
 
   // Estados para mensaje personalizado
   const [textoPersonalizado, setTextoPersonalizado] = useState("");
@@ -73,34 +73,34 @@ function VistaPrincipalContent() {
 
   // Obtener el mensaje actual si existe
   const mensajeTexto = mensajeActual !== null ?
-  (mensajeActual === "personalizado" ? textoPersonalizado : mensajes[mensajeActual]?.mensaje || "") : "";
+    (mensajeActual === "personalizado" ? textoPersonalizado : mensajes[mensajeActual]?.mensaje || "") : "";
 
-const mensajeVelocidad = mensajeActual !== null ?
-  (mensajeActual === "personalizado" ? velocidadPersonalizada : `x${mensajes[mensajeActual]?.velocidad}` || "x1") : "x1";
+  const mensajeVelocidad = mensajeActual !== null ?
+    (mensajeActual === "personalizado" ? velocidadPersonalizada : `x${mensajes[mensajeActual]?.velocidad}` || "x1") : "x1";
 
-// Función para actualizar el mensaje actual desde mensajes guardados
-const actualizarMensaje = () => {
-  if (seleccionado !== null && mensajes[seleccionado]) {
-    setMensajeActual(seleccionado);
-    
-    // Publicar mensaje en MQTT cuando se actualiza
-    if (isConnected) {
-      const mensajeAPublicar = {
-        texto: mensajes[seleccionado].mensaje, // Cambiado de texto a mensaje
-        velocidad: `x${mensajes[seleccionado].velocidad}` // Formato x1, x2, etc.
-      };
-      
-      // Publicar en el tópico "mensaje/actualizar"
-      publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
-      console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
-    } else {
-      console.warn('❌ No se pudo publicar el mensaje: No hay conexión MQTT');
+  // Función para actualizar el mensaje actual desde mensajes guardados
+  const actualizarMensaje = () => {
+    if (seleccionado !== null && mensajes[seleccionado]) {
+      setMensajeActual(seleccionado);
+
+      // Publicar mensaje en MQTT cuando se actualiza
+      if (isConnected) {
+        const mensajeAPublicar = {
+          texto: mensajes[seleccionado].mensaje, // Cambiado de texto a mensaje
+          velocidad: `x${mensajes[seleccionado].velocidad}` // Formato x1, x2, etc.
+        };
+
+        // Publicar en el tópico "mensaje/actualizar"
+        publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+        console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+      } else {
+        console.warn('❌ No se pudo publicar el mensaje: No hay conexión MQTT');
+      }
+
+      setSeleccionado(null); // Limpiar selección
+      setModoPersonalizado(false); // Salir del modo personalizado
     }
-    
-    setSeleccionado(null); // Limpiar selección
-    setModoPersonalizado(false); // Salir del modo personalizado
-  }
-};
+  };
 
   // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
@@ -182,24 +182,24 @@ const actualizarMensaje = () => {
     const velocidadFinal = velocidadInput === "" ? 1 : parseFloat(velocidadInput);
 
     try {
-        // Llama al endpoint para guardar el mensaje
-        const respuesta = await guardarMensaje({
-            idTableroRef: idTablero, // idTablero definido en el componente
-            mensaje: nuevoTexto.trim(),
-            velocidad: velocidadFinal
-        });
-        console.log("Respuesta del backend:", respuesta);
+      // Llama al endpoint para guardar el mensaje
+      const respuesta = await guardarMensaje({
+        idTableroRef: idTablero, // idTablero definido en el componente
+        mensaje: nuevoTexto.trim(),
+        velocidad: velocidadFinal
+      });
+      console.log("Respuesta del backend:", respuesta);
 
-        // Actualiza la lista de mensajes (por ejemplo, agregando el nuevo mensaje)
-        setMensajes([...mensajes, {
-            mensaje: respuesta.mensaje,
-            velocidad: velocidadFinal
-        }]);
-        setNuevoTexto("");
-        setNuevaVelocidad("");
-        setModalOpen(false);
+      // Actualiza la lista de mensajes (por ejemplo, agregando el nuevo mensaje)
+      setMensajes([...mensajes, {
+        mensaje: respuesta.mensaje,
+        velocidad: velocidadFinal
+      }]);
+      setNuevoTexto("");
+      setNuevaVelocidad("");
+      setModalOpen(false);
     } catch (error) {
-        alert("Error al guardar el mensaje. Revisa la consola para más información.");
+      alert("Error al guardar el mensaje. Revisa la consola para más información.");
     }
   };
 
@@ -268,19 +268,19 @@ const actualizarMensaje = () => {
 
         {/* Indicador de estado MQTT */}
         <div className="flex items-center mt-2 space-x-2">
-  <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-  <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
-  {!isConnected && !connecting && (
-    <button 
-      onClick={reconnect}
-      disabled={connecting}
-      className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
-    >
-      {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
-    </button>
-  )}
-  {mqttError && <span className="text-red-500 text-sm ml-2">({mqttError})</span>}
-</div>
+          <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
+          {!isConnected && !connecting && (
+            <button
+              onClick={reconnect}
+              disabled={connecting}
+              className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
+            >
+              {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
+            </button>
+          )}
+          {mqttError && <span className="text-red-500 text-sm ml-2">({mqttError})</span>}
+        </div>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
         <div className="marquee-container">
@@ -306,8 +306,8 @@ const actualizarMensaje = () => {
             <button
               onClick={toggleModoPersonalizado}
               className={`ml-4 px-4 py-1 rounded-full text-sm ${modoPersonalizado
-                  ? 'bg-[#109d95] text-white'
-                  : 'bg-gray-200 text-gray-700'
+                ? 'bg-[#109d95] text-white'
+                : 'bg-gray-200 text-gray-700'
                 }`}
             >
               {modoPersonalizado ? 'Activado' : 'Desactivado'}
@@ -417,7 +417,7 @@ const actualizarMensaje = () => {
               </tr>
             </thead>
             <tbody>
-              {/* {mensajes.map((msg, idx) => (
+              {mensajes.map((msg, idx) => (
                 <tr
                   key={idx}
                   className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''
@@ -432,14 +432,14 @@ const actualizarMensaje = () => {
                   <td className="px-4">{msg.mensaje}</td>
                   <td className="px-4 text-center">x{msg.velocidad}</td>
                 </tr>
-              ))} */}
+              ))}
             </tbody>
           </table>
         )}
 
         <div className="flex justify-center mt-6">
           {/* Se agrega el handler para abrir el modal */}
-          <button 
+          <button
             className="bg-black hover:bg-gray-800 text-white font-bold px-6 py-2 rounded-full cursor-pointer shadow-md transition-colors"
             onClick={() => setModalOpen(true)}
           >
@@ -469,25 +469,35 @@ const actualizarMensaje = () => {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">Velocidad (opcional)</label>
-                <input
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
+                  Velocidad
+                </label>
+                <select
                   id="mensaje-velocidad"
-                  type="text"
                   className="w-full border rounded px-2 py-1"
-                  placeholder="Ej: 2.5"
                   value={nuevaVelocidad}
                   onChange={(e) => setNuevaVelocidad(e.target.value)}
-                />
+                >
+                  <option value="">Seleccionar velocidad</option>
+                  <option value="0.5">0.5</option>
+                  <option value="1">1</option>
+                  <option value="1.5">1.5</option>
+                  <option value="2">2</option>
+                  <option value="2.5">2.5</option>
+                  <option value="3">3</option>
+                  <option value="3.5">3.5</option>
+                  <option value="4">4</option>
+                </select>
               </div>
               <div className="flex justify-end gap-2">
-                <button 
+                <button
                   type="button"
                   className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors"
                   onClick={() => setModalOpen(false)}
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors"
                 >
