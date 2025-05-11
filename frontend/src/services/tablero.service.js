@@ -11,3 +11,19 @@ export const obtenerMensajes = async (idTablero) => {
       throw error;
     }
 };
+
+export const guardarMensaje = async ({ idTableroRef, mensaje, velocidad }) => {
+    try {
+        const response = await axiosAuth.post('api/board/save-message', {
+            idTableroRef,
+            mensaje,
+            velocidad
+        });
+        console.log("Mensaje guardado:", response.data);
+        console.log("Mensaje guardado:", response);
+        return response.data;
+    } catch (error) {
+        console.error("Error al guardar el mensaje:", error);
+        throw error;
+    }
+};
