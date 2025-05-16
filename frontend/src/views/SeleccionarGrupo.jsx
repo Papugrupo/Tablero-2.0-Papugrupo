@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css'; // Reutiliza los estilos existentes
-//import { obtenerGrupos, crearGrupo } from "../services/grupo.service"; // Debes implementar estos servicios
+import { crearGrupo,unirseGrupo,obtenerGrupos } from "../services/tablero.service";
 
 export default function SeleccionarGrupo() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -11,11 +11,25 @@ export default function SeleccionarGrupo() {
   const [nombreNuevoGrupo, setNombreNuevoGrupo] = useState("");
   const [error, setError] = useState(null);
 
+  const cargarGrupos = async () => {
+    try {
+      const data = await obtenerGrupos(); 
+      console.log("Grupos obtenidos:", data);
+      setGrupos(data);
+      setError(null);
+    } catch (err) {
+      console.error("Error al obtener grupos:", err);
+      setError("No se pudieron cargar los grupos.");
+    }
+  };
+
+
   useEffect(() => {
     const cargarGrupos = async () => {
       try {
-        //const data = await obtenerGrupos(); // obtiene lista desde tu backend
-        //setGrupos(data);
+        const data = await obtenerGrupos(); 
+        console.log("Grupos obtenidos:", data);
+        setGrupos(data);
         setError(null);
       } catch (err) {
         console.error("Error al obtener grupos:", err);
@@ -31,9 +45,9 @@ export default function SeleccionarGrupo() {
     if (nombreNuevoGrupo.trim() === "") return;
 
     try {
-      //const nuevo = await crearGrupo({ nombre: nombreNuevoGrupo });
-      //setGrupos([...grupos, nuevo]);
+      await crearGrupo({ nombreGrupo: nombreNuevoGrupo });
       setNombreNuevoGrupo("");
+      cargarGrupos();
     } catch (err) {
       console.error("Error al crear grupo:", err);
       setError("No se pudo crear el grupo.");
@@ -41,15 +55,32 @@ export default function SeleccionarGrupo() {
   };
 
   const handleSeleccionarGrupo = (e) => {
-    setGrupoSeleccionado(e.target.value);
+    const uuidSeleccionado = e.target.value;
+    const grupo = grupos.find((g) => g.idGrupo === uuidSeleccionado);
+    setGrupoSeleccionado(grupo);
+    console.log("Grupo seleccionado:", grupo);
   };
+
+  const handleUnirGrupo = async (e) => {
+    e.preventDefault();
+    if (!grupoSeleccionado) return;
+
+    try {
+      await unirseGrupo({ idGrupo: grupoSeleccionado.idGrupo });
+      setGrupoSeleccionado("");
+      cargarGrupos();
+    } catch (err) {
+      console.error("Error al unirse al grupo:", err);
+      setError("No se pudo unir al grupo.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
       <main className="p-6 md:px-36 rounded-lg">
-        <h1 className="text-2xl font-bold mb-6">Hola</h1>
+        <h1 className="text-2xl font-bold mb-6">Hola!</h1>
         <p className="mb-4">Para seguir con el proceso de registro, necesitas seleccionar o crear un grupo para ser asignado a él.</p>
         <h1 className="text-2xl font-bold mb-6">Gestión de Grupos</h1>
 
@@ -61,55 +92,62 @@ export default function SeleccionarGrupo() {
           <section className="mb-8 ">
             <h2 className="text-xl font-semibold mb-2">Selecciona un grupo existente:</h2>
             <select
-              className="p-2 border rounded w-full "
-              value={grupoSeleccionado}
+              className="p-2 border rounded w-full"
+              value={grupoSeleccionado?.idGrupo || ''}
               onChange={handleSeleccionarGrupo}
             >
               <option value="">-- Selecciona un grupo --</option>
               {grupos.map((grupo) => (
-                <option key={grupo.id} value={grupo.id}>
-                  {grupo.nombre}
+                <option key={grupo.idGrupo} value={grupo.idGrupo}>
+                  {grupo.nombreGrupo} - {grupo.Usuario.nombre}
                 </option>
               ))}
             </select>
+            {grupoSeleccionado && (
+          <div className="flex mt-6 text-green-700 justify-end items-end ">
+            <button onClick={handleUnirGrupo} type="submit"className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"> Unirme al grupo</button>
+           
+          </div>
+        )}
           </section>
 
-        <section className="mb-8 justify-center ">
-              <h2 className="text-xl font-semibold mb-2">O</h2>
+        <section className="mb-8 w-full">
+              <h2 className="text-xl  font-semibold mb-2">O</h2>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Crear nuevo grupo</h2>
-            <form onSubmit={handleCrearGrupo} className="flex flex-row gap-4 items-start">
+            <h2 className="text-xl font-semibold mb-2">Crear y unirme a un nuevo grupo</h2>
+            <form onSubmit={handleCrearGrupo} className="flex flex-col gap-4 items-start">
               <input
                 type="text"
-                className="p-2 border rounded w-full"
+                className="p-2 border rounded w-full "
                 placeholder="Nombre del grupo"
                 value={nombreNuevoGrupo}
                 onChange={(e) => setNombreNuevoGrupo(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-              >
-                Crear
-              </button>
+              />  
             </form>
+            <div className="flex mt-6 text-green-700 justify-end items-end ">
+                {nombreNuevoGrupo && (
+                  <button
+                  
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                  onClick={handleCrearGrupo}
+                >
+                  Crear y unirme
+                </button>
+                )}
+              </div>
           </section>
           </div>
-          <div className="flex flex-col justify-center items-center  md:w-1/2">
-          <img src="./public/people.png" alt="Grupo" className=" mx-auto " />
+          <div className="flex flex-col   md:w-1/2">
+          <img src="/people.png" alt="Grupo" className=" mx-auto " />
           
           </div>
         </div>
 
         
 
-        {grupoSeleccionado && (
-          <div className="mt-6 text-green-700 font-medium">
-            Grupo seleccionado: <strong>{grupos.find(g => g.id === grupoSeleccionado)?.nombre}</strong>
-          </div>
-        )}
+        
       </main>
     </div>
   );
