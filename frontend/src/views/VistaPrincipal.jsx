@@ -18,7 +18,17 @@ export default function VistaPrincipal() {
 function VistaPrincipalContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
-  const [mensajes, setMensajes] = useState([]); // Array de mensajes desde API
+  const [mensajes, setMensajes] = useState([{
+    id:"a",
+    mensaje: "Primer mensaje de ejemplo",
+    velocidad: "x3"
+  },
+  {
+    id:"b",
+    mensaje: "Segundo mensaje de prueba",
+    velocidad: "x3.5"
+
+  }]); // Array de mensajes desde API
   const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
 
   // NUEVOS ESTADOS PARA EL MODAL
@@ -198,7 +208,7 @@ function VistaPrincipalContent() {
       setNuevoTexto("");
       setNuevaVelocidad("");
       setModalOpen(false);
-    } catch (error) {
+    } catch {
       alert("Error al guardar el mensaje. Revisa la consola para más información.");
     }
   };
