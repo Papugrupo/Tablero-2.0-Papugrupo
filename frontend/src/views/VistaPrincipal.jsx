@@ -20,23 +20,25 @@ function VistaPrincipalContent() {
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
   const [mensajes, setMensajes] = useState([{
     id:"a",
-    mensaje: "Primer mensaje de ejemplo",
-    velocidad: "x3"
+    mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo",
+    velocidad: "3"
   },
   {
     id:"b",
-    mensaje: "Segundo mensaje de prueba",
-    velocidad: "x3.5"
-
+    mensaje: "Segundo mensaje de prueba\nOtra línea de prueba",
+    velocidad: "3.5"
   }]); // Array de mensajes desde API
   const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
 
   // NUEVOS ESTADOS PARA EL MODAL
   const [modalOpen, setModalOpen] = useState(false);
-  const [nuevoTexto, setNuevoTexto] = useState("");
+  const [nuevoTexto1, setNuevoTexto1] = useState("");
+  const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
 
-  const marqueeRef = useRef(null);
+  // Referencias para los dos tableros LED
+  const marqueeRef1 = useRef(null);
+  const marqueeRef2 = useRef(null);
   const [duration, setDuration] = useState(null);
   const [cargando, setCargando] = useState(true); // Estado para mostrar carga
   const [error, setError] = useState(null); // Estado para manejar errores
@@ -44,15 +46,17 @@ function VistaPrincipalContent() {
   // ID del tablero (deberías obtenerlo de props o contexto)
   const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
 
-
-
-  // Estados para mensaje personalizado
-  const [textoPersonalizado, setTextoPersonalizado] = useState("");
+    // Estados para mensaje personalizado
+  const [textoPersonalizado1, setTextoPersonalizado1] = useState("");
+  const [textoPersonalizado2, setTextoPersonalizado2] = useState("");
+  // Nuevos estados para el texto que se mostrará (solo cambia al presionar el botón)
+  const [textoMostrado1, setTextoMostrado1] = useState("");
+  const [textoMostrado2, setTextoMostrado2] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
 
   // Límite de caracteres para MQTT
-  const LIMITE_CARACTERES = 200;
+  const LIMITE_CARACTERES = 100; // Por línea
 
   // Use MQTT context
   const { isConnected, mqttError, publish, reconnect, reconnectAttempts, connecting } = useMqtt();
@@ -70,8 +74,8 @@ function VistaPrincipalContent() {
         setError('No se pudieron cargar los mensajes guardados');
         // Si hay error, usar mensajes predeterminados para no romper la funcionalidad
         setMensajes([
-          { texto: "Primer mensaje de ejemplo", velocidad: "x3" },
-          { texto: "Segundo mensaje de prueba", velocidad: "x3.5" },
+          { mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo", velocidad: "3" },
+          { mensaje: "Segundo mensaje de prueba\nOtra línea de prueba", velocidad: "3.5" },
         ]);
       } finally {
         setCargando(false);
@@ -80,13 +84,24 @@ function VistaPrincipalContent() {
 
     cargarMensajes();
   }, [idTablero]);
+  
+  // Función para separar las líneas del mensaje
+  const obtenerLineasDeMensaje = (mensaje) => {
+    if (!mensaje) return ["", ""];
+    const lineas = mensaje.split("\n");
+    return [lineas[0] || "", lineas[1] || ""];
+  };
 
-  // Obtener el mensaje actual si existe
-  const mensajeTexto = mensajeActual !== null ?
-    (mensajeActual === "personalizado" ? textoPersonalizado : mensajes[mensajeActual]?.mensaje || "") : "";
+    // Obtener las líneas del mensaje actual
+  const [mensajeTexto1, mensajeTexto2] = mensajeActual !== null
+    ? mensajeActual === "personalizado"
+      ? [textoMostrado1, textoMostrado2] // Usamos textoMostrado en lugar de textoPersonalizado
+      : obtenerLineasDeMensaje(mensajes[mensajeActual]?.mensaje || "")
+    : ["", ""];
 
-  const mensajeVelocidad = mensajeActual !== null ?
-    (mensajeActual === "personalizado" ? velocidadPersonalizada : `x${mensajes[mensajeActual]?.velocidad}` || "x1") : "x1";
+  const mensajeVelocidad = mensajeActual !== null
+    ? (mensajeActual === "personalizado" ? velocidadPersonalizada : `x${mensajes[mensajeActual]?.velocidad}` || "x1")
+    : "x1";
 
   // Función para actualizar el mensaje actual desde mensajes guardados
   const actualizarMensaje = () => {
@@ -95,8 +110,10 @@ function VistaPrincipalContent() {
 
       // Publicar mensaje en MQTT cuando se actualiza
       if (isConnected) {
+        const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
         const mensajeAPublicar = {
-          texto: mensajes[seleccionado].mensaje, // Cambiado de texto a mensaje
+          texto1: lineas[0],
+          texto2: lineas[1],
           velocidad: `x${mensajes[seleccionado].velocidad}` // Formato x1, x2, etc.
         };
 
@@ -112,21 +129,29 @@ function VistaPrincipalContent() {
     }
   };
 
-  // Función para actualizar con mensaje personalizado
+    // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
-    if (textoPersonalizado.trim() !== "") {
+    if (textoPersonalizado1.trim() !== "" || textoPersonalizado2.trim() !== "") {
       // Verificar que no exceda el límite de caracteres
-      if (textoPersonalizado.length > LIMITE_CARACTERES) {
-        alert(`El mensaje excede el límite de ${LIMITE_CARACTERES} caracteres permitidos para MQTT.`);
+      if (textoPersonalizado1.length > LIMITE_CARACTERES || textoPersonalizado2.length > LIMITE_CARACTERES) {
+        alert(`El mensaje excede el límite de ${LIMITE_CARACTERES} caracteres por línea permitidos para MQTT.`);
         return;
       }
 
+      // Actualizar los textos que se mostrarán
+      setTextoMostrado1(textoPersonalizado1.trim());
+      setTextoMostrado2(textoPersonalizado2.trim());
+
+      // Actualizar el estado para mostrar el mensaje personalizado
       setMensajeActual("personalizado");
 
       // Publicar mensaje personalizado en MQTT
       if (isConnected) {
+        // Crear el mensaje con formato texto1\ntexto2
+        const mensajeTexto = `${textoPersonalizado1.trim()}\n${textoPersonalizado2.trim()}`;
+        
         const mensajeAPublicar = {
-          texto: textoPersonalizado,
+          mensaje: mensajeTexto, // Enviamos el mensaje en formato "texto1\ntexto2"
           velocidad: velocidadPersonalizada
         };
 
@@ -174,10 +199,22 @@ function VistaPrincipalContent() {
     setSeleccionado(null); // Limpiar selección cuando cambiamos de modo
   };
 
+  // Función para mostrar el contenido de un mensaje en la tabla
+  const mostrarContenidoMensaje = (mensaje) => {
+    if (!mensaje) return "Sin contenido";
+    const lineas = obtenerLineasDeMensaje(mensaje);
+    return (
+      <div>
+        <div>{lineas[0]}</div>
+        {lineas[1] && <div className="text-sm opacity-80">{lineas[1]}</div>}
+      </div>
+    );
+  };
+
   // NUEVA FUNCIÓN: Manejo para enviar el nuevo mensaje
   const enviarNuevoMensaje = async (e) => {
     e.preventDefault();
-    if (nuevoTexto.trim() === "") return; // No se permiten mensajes vacíos
+    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return; // Al menos una línea debe tener contenido
 
     // Si se ingresó velocidad, debe ser un número entero o float
     const velocidadInput = nuevaVelocidad.trim();
@@ -192,20 +229,24 @@ function VistaPrincipalContent() {
     const velocidadFinal = velocidadInput === "" ? 1 : parseFloat(velocidadInput);
 
     try {
+      // Crear el mensaje con formato texto1\ntexto2
+      const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`;
+      
       // Llama al endpoint para guardar el mensaje
       const respuesta = await guardarMensaje({
         idTableroRef: idTablero, // idTablero definido en el componente
-        mensaje: nuevoTexto.trim(),
+        mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
         velocidad: velocidadFinal
       });
       console.log("Respuesta del backend:", respuesta);
 
-      // Actualiza la lista de mensajes (por ejemplo, agregando el nuevo mensaje)
+      // Actualiza la lista de mensajes
       setMensajes([...mensajes, {
-        mensaje: respuesta.mensaje,
+        mensaje: mensajeCompleto, // Guardar en formato texto1\ntexto2
         velocidad: velocidadFinal
       }]);
-      setNuevoTexto("");
+      setNuevoTexto1("");
+      setNuevoTexto2("");
       setNuevaVelocidad("");
       setModalOpen(false);
     } catch {
@@ -213,13 +254,22 @@ function VistaPrincipalContent() {
     }
   };
 
+  // Efecto para calcular la duración de la animación
   useEffect(() => {
     const calcularDuracion = () => {
-      const el = marqueeRef.current;
-      if (el && mensajeActual !== null) {
-        const textWidth = el.scrollWidth;
-        const containerWidth = el.parentElement.offsetWidth;
-
+      const el1 = marqueeRef1.current;
+      const el2 = marqueeRef2.current;
+      
+      if ((el1 || el2) && mensajeActual !== null) {
+        // Calculamos el ancho máximo entre ambos textos
+        const textWidth1 = el1 ? el1.scrollWidth : 0;
+        const textWidth2 = el2 ? el2.scrollWidth : 0;
+        const textWidth = Math.max(textWidth1, textWidth2);
+        
+        // Usamos el ancho del primer contenedor como referencia
+        const containerWidth = el1 ? el1.parentElement.offsetWidth : 
+                               el2 ? el2.parentElement.offsetWidth : 0;
+                               
         const factorVelocidad = parseFloat(mensajeVelocidad.replace("x", "")) || 1;
 
         // Distancia total que debe recorrer el texto
@@ -231,9 +281,17 @@ function VistaPrincipalContent() {
         setDuration(duracionAjustada);
 
         // Forzar reinicio de la animación para aplicar cambios
-        el.style.animation = 'none';
-        void el.offsetHeight; // Trigger reflow
-        el.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
+        if (el1) {
+          el1.style.animation = 'none';
+          void el1.offsetHeight; // Trigger reflow
+          el1.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
+        }
+        
+        if (el2) {
+          el2.style.animation = 'none';
+          void el2.offsetHeight; // Trigger reflow
+          el2.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
+        }
       }
     };
 
@@ -245,7 +303,7 @@ function VistaPrincipalContent() {
     return () => {
       window.removeEventListener('resize', debouncedResize);
     };
-  }, [mensajeTexto, mensajeVelocidad, mensajeActual]);
+  }, [mensajeTexto1, mensajeTexto2, mensajeVelocidad, mensajeActual]);
 
   // Función debounce para optimizar
   function debounce(func, wait) {
@@ -293,20 +351,44 @@ function VistaPrincipalContent() {
         </div>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
-        <div className="marqueee-container">
-          {mensajeActual !== null ? (
-            <div
-              ref={marqueeRef}
-              className="marqueee-text"
-              style={{
-                animation: duration ? `marqueee ${duration}s linear infinite` : "none", minWidth: 'fit-content'
-              }}
-            >
-              {mensajeTexto}
-            </div>
-          ) : (
-            <div className="marqueee-text text-gray-500">Tablero vacío</div>
-          )}
+        
+        {/* Contenedor principal para los dos tableros LED */}
+        <div className="led-display-container">
+          {/* Primer tablero LED (línea superior) */}
+          <div className="marqueee-container mb-2">
+            {mensajeActual !== null ? (
+              <div
+                ref={marqueeRef1}
+                className="marqueee-text"
+                style={{
+                  animation: duration ? `marqueee ${duration}s linear infinite` : "none", 
+                  minWidth: 'fit-content'
+                }}
+              >
+                {mensajeTexto1}
+              </div>
+            ) : (
+              <div className="marqueee-text text-gray-500">Tablero vacío</div>
+            )}
+          </div>
+          
+          {/* Segundo tablero LED (línea inferior) */}
+          <div className="marqueee-container">
+            {mensajeActual !== null && mensajeTexto2 ? (
+              <div
+                ref={marqueeRef2}
+                className="marqueee-text marqueee-text-second"
+                style={{
+                  animation: duration ? `marqueee ${duration}s linear infinite` : "none", 
+                  minWidth: 'fit-content'
+                }}
+              >
+                {mensajeTexto2}
+              </div>
+            ) : (
+              <div className="marqueee-text text-gray-500">Tablero vacío</div>
+            )}
+          </div>
         </div>
 
         {/* Sección de entrada de texto personalizado */}
@@ -326,29 +408,59 @@ function VistaPrincipalContent() {
 
           {modoPersonalizado && (
             <div className="space-y-4">
+              {/* Primera línea de texto */}
               <div>
-                <label htmlFor="textoPersonalizado" className="block text-sm font-medium text-gray-700 mb-1">
-                  Texto a mostrar:
+                <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
+                  Línea 1:
                 </label>
                 <input
                   type="text"
-                  id="textoPersonalizado"
-                  value={textoPersonalizado}
+                  id="textoPersonalizado1"
+                  value={textoPersonalizado1}
                   onChange={(e) => {
                     // Limitar el texto al número máximo de caracteres
                     if (e.target.value.length <= LIMITE_CARACTERES) {
-                      setTextoPersonalizado(e.target.value);
+                      setTextoPersonalizado1(e.target.value);
                     }
                   }}
                   maxLength={LIMITE_CARACTERES}
-                  placeholder="Escribe tu mensaje aquí..."
+                  placeholder="Escribe la primera línea aquí..."
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
                 />
                 <div className="flex justify-between mt-1 text-sm">
                   <span className="text-gray-500">
-                    Caracteres: {textoPersonalizado.length}/{LIMITE_CARACTERES}
+                    Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}
                   </span>
-                  {textoPersonalizado.length >= LIMITE_CARACTERES && (
+                  {textoPersonalizado1.length >= LIMITE_CARACTERES && (
+                    <span className="text-red-500">Límite alcanzado</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Segunda línea de texto */}
+              <div>
+                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
+                  Línea 2:
+                </label>
+                <input
+                  type="text"
+                  id="textoPersonalizado2"
+                  value={textoPersonalizado2}
+                  onChange={(e) => {
+                    // Limitar el texto al número máximo de caracteres
+                    if (e.target.value.length <= LIMITE_CARACTERES) {
+                      setTextoPersonalizado2(e.target.value);
+                    }
+                  }}
+                  maxLength={LIMITE_CARACTERES}
+                  placeholder="Escribe la segunda línea aquí..."
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                />
+                <div className="flex justify-between mt-1 text-sm">
+                  <span className="text-gray-500">
+                    Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}
+                  </span>
+                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (
                     <span className="text-red-500">Límite alcanzado</span>
                   )}
                 </div>
@@ -372,8 +484,8 @@ function VistaPrincipalContent() {
 
               <button
                 onClick={actualizarMensajePersonalizado}
-                disabled={textoPersonalizado.trim() === ""}
-                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${textoPersonalizado.trim() === "" ? 'opacity-50 cursor-not-allowed' : ''
+                disabled={textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === ""}
+                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "" ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
               >
                 ACTUALIZAR CON TEXTO PERSONALIZADO
@@ -439,7 +551,7 @@ function VistaPrincipalContent() {
                       }`} />
                   </td>
                   <td className="px-4">{msg.Usuario?.nombre || "Desconocido"}</td>
-                  <td className="px-4">{msg.mensaje}</td>
+                  <td className="px-4">{mostrarContenidoMensaje(msg.mensaje)}</td>
                   <td className="px-4 text-center">x{msg.velocidad}</td>
                 </tr>
               ))}
@@ -448,7 +560,6 @@ function VistaPrincipalContent() {
         )}
 
         <div className="flex justify-center mt-6">
-          {/* Se agrega el handler para abrir el modal */}
           <button
             className="bg-black hover:bg-gray-800 text-white font-bold px-6 py-2 rounded-full cursor-pointer shadow-md transition-colors"
             onClick={() => setModalOpen(true)}
@@ -458,26 +569,51 @@ function VistaPrincipalContent() {
         </div>
       </main>
 
-      {/* Modal para agregar nuevo mensaje */}
+      {/* Modal para agregar nuevo mensaje con dos líneas */}
       {modalOpen && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}   // Opacidad 15%
+          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
         >
-          <div className="bg-white p-6 rounded-lg w-80">
+          <div className="bg-white p-6 rounded-lg w-96">
             <h3 className="text-xl font-bold mb-4">Nuevo Mensaje</h3>
             <form onSubmit={enviarNuevoMensaje}>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto">Texto</label>
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
                 <input
-                  id="mensaje-texto"
+                  id="mensaje-texto1"
                   type="text"
                   className="w-full border rounded px-2 py-1"
-                  value={nuevoTexto}
-                  onChange={(e) => setNuevoTexto(e.target.value)}
-                  required
+                  value={nuevoTexto1}
+                  onChange={(e) => setNuevoTexto1(e.target.value)}
+                  placeholder="Primera línea de texto"
+                  maxLength={LIMITE_CARACTERES}
                 />
+                <div className="flex justify-end mt-1">
+                  <span className="text-xs text-gray-500">
+                    {nuevoTexto1.length}/{LIMITE_CARACTERES}
+                  </span>
+                </div>
               </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
+                <input
+                  id="mensaje-texto2"
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  value={nuevoTexto2}
+                  onChange={(e) => setNuevoTexto2(e.target.value)}
+                  placeholder="Segunda línea de texto"
+                  maxLength={LIMITE_CARACTERES}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className="text-xs text-gray-500">
+                    {nuevoTexto2.length}/{LIMITE_CARACTERES}
+                  </span>
+                </div>
+              </div>
+              
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad
@@ -510,6 +646,7 @@ function VistaPrincipalContent() {
                 <button
                   type="submit"
                   className="px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors"
+                  disabled={nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""}
                 >
                   Agregar
                 </button>
