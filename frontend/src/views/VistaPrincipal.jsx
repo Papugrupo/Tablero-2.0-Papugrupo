@@ -233,7 +233,7 @@ function VistaPrincipalContent() {
         // Forzar reinicio de la animación para aplicar cambios
         el.style.animation = 'none';
         void el.offsetHeight; // Trigger reflow
-        el.style.animation = `marquee ${duracionAjustada}s linear infinite`;
+        el.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
       }
     };
 
@@ -293,19 +293,19 @@ function VistaPrincipalContent() {
         </div>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
-        <div className="marquee-container">
+        <div className="marqueee-container">
           {mensajeActual !== null ? (
             <div
               ref={marqueeRef}
-              className="marquee-text"
+              className="marqueee-text"
               style={{
-                animation: duration ? `marquee ${duration}s linear infinite` : "none", minWidth: 'fit-content'
+                animation: duration ? `marqueee ${duration}s linear infinite` : "none", minWidth: 'fit-content'
               }}
             >
               {mensajeTexto}
             </div>
           ) : (
-            <div className="marquee-text text-gray-500">Tablero vacío</div>
+            <div className="marqueee-text text-gray-500">Tablero vacío</div>
           )}
         </div>
 
