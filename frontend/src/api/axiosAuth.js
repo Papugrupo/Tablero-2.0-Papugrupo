@@ -19,4 +19,26 @@ axiosAuth.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+axiosAuth.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+
+    if (status === 401 || status === 405) {
+
+      Cookies.remove('token');
+
+      // Redirigir al login
+      window.location.href = '/';
+    }
+
+    if (status === 403){
+      // Redirigir a seleccionar grupo
+      window.location.href = '/SeleccionarGrupo'
+    }
+
+    return Promise.reject(error); 
+  }
+);
+
 export default axiosAuth;
