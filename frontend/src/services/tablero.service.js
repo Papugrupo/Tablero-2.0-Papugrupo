@@ -82,7 +82,9 @@ export const unirseGrupo = async ({ idGrupo }) => {
 
 export const crearTablero = async () => {
     try {
-        const response = await axiosAuth.post('api/board/add-board');
+        const response = await axiosAuth.post('api/board/add-board',{
+            
+        });
 
         console.log("Tablero:", response);
         return response.data;

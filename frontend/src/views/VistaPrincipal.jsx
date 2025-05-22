@@ -48,21 +48,24 @@ function VistaPrincipalContent() {
   const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
   const [idTableros, setIdTableros] = useState([]); // Estado para manejar los tableros
 
+  const obtenerIdTableros = async () => {
+    try {
+      const data = await obtenerTableros(); // Llama a la función para obtener los tableros
+      console.log("ID de tableros obtenidos:", data);
+      setIdTableros(data); // Actualiza el estado con los ID de los tableros
+    } catch (err) {
+      console.error("Error al obtener ID de tableros:", err);
+      setError("No se pudieron cargar los ID de tableros.");
+    }
+  };  
+
   const handleNuevoTablero = async () => {
     await crearTablero();
+    await obtenerIdTableros();
   }
 
   useEffect(() => {
-    const obtenerIdTableros = async () => {
-      try {
-        const data = await obtenerTableros(); // Llama a la función para obtener los tableros
-        console.log("ID de tableros obtenidos:", data);
-        setIdTableros(data); // Actualiza el estado con los ID de los tableros
-      } catch (err) {
-        console.error("Error al obtener ID de tableros:", err);
-        setError("No se pudieron cargar los ID de tableros.");
-      }
-    };  
+    
     obtenerIdTableros();
   }, []); // Llama a la función al cargar el componente
 
@@ -337,6 +340,11 @@ function VistaPrincipalContent() {
   // Opciones de velocidad predefinidas
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
 
+  const handleModalOpen = () =>{
+    
+    setModalOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
@@ -415,7 +423,6 @@ function VistaPrincipalContent() {
           <button
               className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 ' : ''
                 }`}
-              disabled={true}
               onClick={handleNuevoTablero}
             >
               CREAR NUEVO TABLERO
@@ -594,7 +601,7 @@ function VistaPrincipalContent() {
         <div className="flex justify-center mt-6">
           <button
             className="bg-black hover:bg-gray-800 text-white font-bold px-6 py-2 rounded-full cursor-pointer shadow-md transition-colors"
-            onClick={() => setModalOpen(true)}
+            onClick={handleModalOpen}
           >
             AGREGAR NUEVO MENSAJE
           </button>
