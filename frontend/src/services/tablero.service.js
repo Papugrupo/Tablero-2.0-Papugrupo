@@ -41,6 +41,16 @@ export const obtenerGrupos = async () => {
     }
 };
 
+export const obtenerTableros = async () => {
+    try {
+        const response = await axiosAuth.get('api/board/board-list');
+        return response.data;
+    } catch (error) {
+        console.error("Error al obtener listado de grupos:", error);
+        throw error;
+    }
+};
+
 export const crearGrupo = async ({ nombreGrupo }) => {
     try {
         const response = await axiosAuth.post('api/user/add-group', {
@@ -70,3 +80,17 @@ export const unirseGrupo = async ({ idGrupo }) => {
         throw error;
     }
 }
+
+export const crearTablero = async () => {
+    try {
+        const response = await axiosAuth.post('api/board/add-board',{
+            
+        });
+
+        console.log("Tablero:", response);
+        return response.data;
+    } catch (error) {
+        console.error("Error al crear tablero: ", error);
+        throw error;
+    }
+};

@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje } from "../services/tablero.service"; // Import the API functions
+import { obtenerMensajes, guardarMensaje, obtenerTableros, crearTablero } from "../services/tablero.service"; // Import the API functions
 
 // Main component with MQTT Provider wrapper
 export default function VistaPrincipal() {
@@ -34,6 +34,7 @@ function VistaPrincipalContent() {
   const [modalOpen, setModalOpen] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
+  const [nuevoTablero, setNuevoTablero] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
 
   // Referencias para los dos tableros LED
@@ -45,8 +46,30 @@ function VistaPrincipalContent() {
 
   // ID del tablero (deberías obtenerlo de props o contexto)
   const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
+  const [idTableros, setIdTableros] = useState([]); // Estado para manejar los tableros
 
-  // Estados para mensaje personalizado
+  const obtenerIdTableros = async () => {
+    try {
+      const data = await obtenerTableros(); // Llama a la función para obtener los tableros
+      console.log("ID de tableros obtenidos:", data);
+      setIdTableros(data); // Actualiza el estado con los ID de los tableros
+    } catch (err) {
+      console.error("Error al obtener ID de tableros:", err);
+      setError("No se pudieron cargar los ID de tableros.");
+    }
+  };  
+
+  const handleNuevoTablero = async () => {
+    await crearTablero();
+    await obtenerIdTableros();
+  }
+
+  useEffect(() => {
+    
+    obtenerIdTableros();
+  }, []); // Llama a la función al cargar el componente
+
+    // Estados para mensaje personalizado
   const [textoPersonalizado1, setTextoPersonalizado1] = useState("");
   const [textoPersonalizado2, setTextoPersonalizado2] = useState("");
   // Nuevos estados para el texto que se mostrará (solo cambia al presionar el botón)
@@ -268,7 +291,7 @@ function VistaPrincipalContent() {
 
       // Llama al endpoint para guardar el mensaje
       const respuesta = await guardarMensaje({
-        idTableroRef: idTablero, // idTablero definido en el componente
+        idTableroRef: nuevoTablero, // idTablero definido en el componente
         mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
         velocidad: velocidadFinal,
         animacion: nuevaAnimacion // Guardar la animación seleccionada
@@ -400,6 +423,11 @@ function VistaPrincipalContent() {
   // Opciones de velocidad predefinidas
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
 
+  const handleModalOpen = () =>{
+    
+    setModalOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
@@ -476,6 +504,16 @@ function VistaPrincipalContent() {
               <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
             )}
           </div>
+        </div>
+
+        <div className="flex w-full justify-end items-center mt-4">
+          <button
+              className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 ' : ''
+                }`}
+              onClick={handleNuevoTablero}
+            >
+              CREAR NUEVO TABLERO
+            </button>
         </div>
 
         {/* Sección de entrada de texto personalizado */}
@@ -584,6 +622,7 @@ function VistaPrincipalContent() {
           >
             LIMPIAR TABLERO
           </button>
+          
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
@@ -641,7 +680,7 @@ function VistaPrincipalContent() {
         <div className="flex justify-center mt-6">
           <button
             className="bg-black hover:bg-gray-800 text-white font-bold px-6 py-2 rounded-full cursor-pointer shadow-md transition-colors"
-            onClick={() => setModalOpen(true)}
+            onClick={handleModalOpen}
           >
             AGREGAR NUEVO MENSAJE
           </button>
@@ -693,6 +732,25 @@ function VistaPrincipalContent() {
                 </div>
               </div>
 
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
+                  Tableros
+                </label>
+                <select
+                  id="mensaje-tablero"
+                  className="w-full border rounded px-2 py-1"
+                  value={nuevoTablero}
+                  onChange={(e) => setNuevoTablero(e.target.value)}
+                >
+                  <option value="">Seleccionar tableros</option>
+                  {idTableros.map((tablero) => (
+                    <option key={tablero.idTablero} value={tablero.idTablero}>
+                      {tablero.idTablero}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad

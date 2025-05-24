@@ -46,7 +46,7 @@ const Login = () => {
       
       // Check role for redirection
       if (responseData) {
-        navigate("/SeleccionarGrupo");
+        navigate("/Tablero");
       }
       
     } catch (error) {

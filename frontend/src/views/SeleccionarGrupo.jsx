@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css'; // Reutiliza los estilos existentes
 import { crearGrupo,unirseGrupo,obtenerGrupos } from "../services/tablero.service";
+import { useNavigate } from "react-router-dom";
 
 export default function SeleccionarGrupo() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -10,6 +11,7 @@ export default function SeleccionarGrupo() {
   const [grupoSeleccionado, setGrupoSeleccionado] = useState("");
   const [nombreNuevoGrupo, setNombreNuevoGrupo] = useState("");
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const cargarGrupos = async () => {
     try {
@@ -46,8 +48,9 @@ export default function SeleccionarGrupo() {
 
     try {
       await crearGrupo({ nombreGrupo: nombreNuevoGrupo });
-      setNombreNuevoGrupo("");
-      cargarGrupos();
+      navigate("/tablero");
+      //setNombreNuevoGrupo("");
+      //cargarGrupos();
     } catch (err) {
       console.error("Error al crear grupo:", err);
       setError("No se pudo crear el grupo.");
@@ -67,8 +70,9 @@ export default function SeleccionarGrupo() {
 
     try {
       await unirseGrupo({ idGrupo: grupoSeleccionado.idGrupo });
-      setGrupoSeleccionado("");
-      cargarGrupos();
+      navigate("/tablero");
+      //setGrupoSeleccionado("");
+      // cargarGrupos();
     } catch (err) {
       console.error("Error al unirse al grupo:", err);
       setError("No se pudo unir al grupo.");
