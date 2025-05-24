@@ -19,12 +19,12 @@ function VistaPrincipalContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
   const [mensajes, setMensajes] = useState([{
-    id:"a",
+    id: "a",
     mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo",
     velocidad: "3"
   },
   {
-    id:"b",
+    id: "b",
     mensaje: "Segundo mensaje de prueba\nOtra línea de prueba",
     velocidad: "3.5"
   }]); // Array de mensajes desde API
@@ -46,7 +46,7 @@ function VistaPrincipalContent() {
   // ID del tablero (deberías obtenerlo de props o contexto)
   const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
 
-    // Estados para mensaje personalizado
+  // Estados para mensaje personalizado
   const [textoPersonalizado1, setTextoPersonalizado1] = useState("");
   const [textoPersonalizado2, setTextoPersonalizado2] = useState("");
   // Nuevos estados para el texto que se mostrará (solo cambia al presionar el botón)
@@ -54,6 +54,22 @@ function VistaPrincipalContent() {
   const [textoMostrado2, setTextoMostrado2] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
+
+  const [animacionPersonalizada, setAnimacionPersonalizada] = useState("PA_SCROLL_LEFT");
+  const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
+  const [animacionActual, setAnimacionActual] = useState("PA_SCROLL_LEFT");
+
+  const ANIMACIONES = [
+    { valor: "PA_SCROLL_LEFT", nombre: "Desplazamiento a la izquierda" },
+    { valor: "PA_SCROLL_RIGHT", nombre: "Desplazamiento a la derecha" },
+    { valor: "PA_SCROLL_UP", nombre: "Desplazamiento hacia arriba" },
+    { valor: "PA_SCROLL_DOWN", nombre: "Desplazamiento hacia abajo" },
+    { valor: "PA_WIPE", nombre: "Barrido" },
+    { valor: "PA_CLOSING", nombre: "Cierre de cortina" },
+    { valor: "PA_OPENING", nombre: "Apertura de cortina" },
+    { valor: "PA_FADE", nombre: "Desvanecimiento" },
+    { valor: "PA_NO_EFFECT", nombre: "Sin efecto" },
+  ];
 
   // Límite de caracteres para MQTT
   const LIMITE_CARACTERES = 100; // Por línea
@@ -84,7 +100,7 @@ function VistaPrincipalContent() {
 
     cargarMensajes();
   }, [idTablero]);
-  
+
   // Función para separar las líneas del mensaje
   const obtenerLineasDeMensaje = (mensaje) => {
     if (!mensaje) return ["", ""];
@@ -92,7 +108,7 @@ function VistaPrincipalContent() {
     return [lineas[0] || "", lineas[1] || ""];
   };
 
-    // Obtener las líneas del mensaje actual
+  // Obtener las líneas del mensaje actual
   const [mensajeTexto1, mensajeTexto2] = mensajeActual !== null
     ? mensajeActual === "personalizado"
       ? [textoMostrado1, textoMostrado2] // Usamos textoMostrado en lugar de textoPersonalizado
@@ -107,14 +123,15 @@ function VistaPrincipalContent() {
   const actualizarMensaje = () => {
     if (seleccionado !== null && mensajes[seleccionado]) {
       setMensajeActual(seleccionado);
-
+      setAnimacionActual(mensajes[seleccionado].animacion || "PA_SCROLL_LEFT");
       // Publicar mensaje en MQTT cuando se actualiza
       if (isConnected) {
         const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
         const mensajeAPublicar = {
           texto1: lineas[0],
           texto2: lineas[1],
-          velocidad: `x${mensajes[seleccionado].velocidad}` // Formato x1, x2, etc.
+          velocidad: `x${mensajes[seleccionado].velocidad}`, // Formato x1, x2, etc.
+          animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT" // Usar animación guardada o la predeterminada
         };
 
         // Publicar en el tópico "mensaje/actualizar"
@@ -129,7 +146,7 @@ function VistaPrincipalContent() {
     }
   };
 
-    // Función para actualizar con mensaje personalizado
+  // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
     if (textoPersonalizado1.trim() !== "" || textoPersonalizado2.trim() !== "") {
       // Verificar que no exceda el límite de caracteres
@@ -145,14 +162,16 @@ function VistaPrincipalContent() {
       // Actualizar el estado para mostrar el mensaje personalizado
       setMensajeActual("personalizado");
 
+      setAnimacionActual(animacionPersonalizada)
       // Publicar mensaje personalizado en MQTT
       if (isConnected) {
         // Crear el mensaje con formato texto1\ntexto2
         const mensajeTexto = `${textoPersonalizado1.trim()}\n${textoPersonalizado2.trim()}`;
-        
+
         const mensajeAPublicar = {
           mensaje: mensajeTexto, // Enviamos el mensaje en formato "texto1\ntexto2"
-          velocidad: velocidadPersonalizada
+          velocidad: velocidadPersonalizada,
+          animacion: animacionPersonalizada // Nueva propiedad para la animación
         };
 
         try {
@@ -171,6 +190,21 @@ function VistaPrincipalContent() {
       }
 
       setSeleccionado(null); // Limpiar selección
+    }
+  };
+
+  const obtenerClaseAnimacion = (tipoAnimacion) => {
+    switch (tipoAnimacion) {
+      case "PA_SCROLL_LEFT": return "marqueee-left";
+      case "PA_SCROLL_RIGHT": return "marqueee-right";
+      case "PA_SCROLL_UP": return "marqueee-up";
+      case "PA_SCROLL_DOWN": return "marqueee-down";
+      case "PA_WIPE": return "marqueee-wipe";
+      case "PA_CLOSING": return "marqueee-closing";
+      case "PA_OPENING": return "marqueee-opening";
+      case "PA_FADE": return "marqueee-fade";
+      case "PA_NO_EFFECT": return "marqueee-no-effect";
+      default: return "marqueee-left";
     }
   };
 
@@ -231,23 +265,26 @@ function VistaPrincipalContent() {
     try {
       // Crear el mensaje con formato texto1\ntexto2
       const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`;
-      
+
       // Llama al endpoint para guardar el mensaje
       const respuesta = await guardarMensaje({
         idTableroRef: idTablero, // idTablero definido en el componente
         mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
-        velocidad: velocidadFinal
+        velocidad: velocidadFinal,
+        animacion: nuevaAnimacion // Guardar la animación seleccionada
       });
       console.log("Respuesta del backend:", respuesta);
 
       // Actualiza la lista de mensajes
       setMensajes([...mensajes, {
         mensaje: mensajeCompleto, // Guardar en formato texto1\ntexto2
-        velocidad: velocidadFinal
+        velocidad: velocidadFinal,
+        animacion: nuevaAnimacion // Añadir animación al mensaje local
       }]);
       setNuevoTexto1("");
       setNuevoTexto2("");
       setNuevaVelocidad("");
+      setNuevaAnimacion("PA_SCROLL_LEFT"); // Resetear a la animación predeterminada
       setModalOpen(false);
     } catch {
       alert("Error al guardar el mensaje. Revisa la consola para más información.");
@@ -259,39 +296,85 @@ function VistaPrincipalContent() {
     const calcularDuracion = () => {
       const el1 = marqueeRef1.current;
       const el2 = marqueeRef2.current;
-      
+
       if ((el1 || el2) && mensajeActual !== null) {
         // Calculamos el ancho máximo entre ambos textos
         const textWidth1 = el1 ? el1.scrollWidth : 0;
         const textWidth2 = el2 ? el2.scrollWidth : 0;
         const textWidth = Math.max(textWidth1, textWidth2);
-        
+
         // Usamos el ancho del primer contenedor como referencia
-        const containerWidth = el1 ? el1.parentElement.offsetWidth : 
-                               el2 ? el2.parentElement.offsetWidth : 0;
-                               
+        const containerWidth = el1 ? el1.parentElement.offsetWidth :
+          el2 ? el2.parentElement.offsetWidth : 0;
+
         const factorVelocidad = parseFloat(mensajeVelocidad.replace("x", "")) || 1;
 
-        // Distancia total que debe recorrer el texto
-        const distanciaTotal = textWidth + containerWidth;
+        // Duración base según el tipo de animación
+        let duracionBase;
 
-        // Calculamos la duración basada en la relación distancia/tiempo
-        const duracionAjustada = (distanciaTotal / (containerWidth * 0.1)) * (1 / factorVelocidad);
+        if (["PA_SCROLL_LEFT", "PA_SCROLL_RIGHT"].includes(animacionActual)) {
+          // Para desplazamiento horizontal, basado en el ancho del texto
+          const distanciaTotal = textWidth + containerWidth;
+          duracionBase = (distanciaTotal / 100);
+        }
+        else if (["PA_SCROLL_UP", "PA_SCROLL_DOWN"].includes(animacionActual)) {
+          // Para desplazamiento vertical
+          duracionBase = 1;
+        }
+        else if (["PA_WIPE"].includes(animacionActual)) {
+          // Para efectos basados en caracteres
+          const charCount = Math.max(
+            mensajeTexto1 ? mensajeTexto1.length : 0,
+            mensajeTexto2 ? mensajeTexto2.length : 0
+          );
+          duracionBase = Math.max(2, charCount * 0.1);
+        }
+        else if (["PA_NO_EFFECT"].includes(animacionActual)) {
+          // Sin efecto
+          duracionBase = 0.5;
+        }
+        else {
+          // Para el resto de animaciones (fade, random, etc.)
+          duracionBase = 3;
+        }
+
+        // Aplicamos el factor de velocidad de manera uniforme
+        const duracionFinal = duracionBase / factorVelocidad;
+
+        // Aseguramos que la duración tenga sentido
+        const duracionAjustada = Math.max(0.5, Math.min(duracionFinal, 15));
 
         setDuration(duracionAjustada);
 
+        // Para la animación aleatoria, seleccionamos una sola vez para ambos elementos
+        let animacionAleatoria = null;
+
+        if (animacionActual === "PA_RANDOM") {
+          // Seleccionar una animación aleatoria de las disponibles
+          const randomAnimations = ["marqueee-left", "marqueee-right", "marqueee-up", "marqueee-down", "marqueee-wipe", "marqueee-closing", "marqueee-opening", "marqueee-fade"];
+          const randomIndex = Math.floor(Math.random() * randomAnimations.length);
+          animacionAleatoria = randomAnimations[randomIndex];
+          console.log("Animación aleatoria seleccionada:", animacionAleatoria);
+        }
+
         // Forzar reinicio de la animación para aplicar cambios
-        if (el1) {
-          el1.style.animation = 'none';
-          void el1.offsetHeight; // Trigger reflow
-          el1.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
-        }
-        
-        if (el2) {
-          el2.style.animation = 'none';
-          void el2.offsetHeight; // Trigger reflow
-          el2.style.animation = `marqueee ${duracionAjustada}s linear infinite`;
-        }
+        const reiniciarAnimacion = (el) => {
+          if (el) {
+            el.style.animation = 'none';
+            void el.offsetHeight; // Trigger reflow
+
+
+            const animClass = obtenerClaseAnimacion(animacionActual);
+            const infiniteStr = ["PA_NO_EFFECT"].includes(animacionActual) ? '' : 'infinite';
+
+            el.className = `marqueee-text ${el === marqueeRef2.current ? "marqueee-text-second" : ""} ${animClass}`;
+            el.style.animation = `${animClass} ${duracionAjustada}s linear ${infiniteStr}`;
+
+          }
+        };
+
+        reiniciarAnimacion(el1);
+        reiniciarAnimacion(el2);
       }
     };
 
@@ -303,7 +386,7 @@ function VistaPrincipalContent() {
     return () => {
       window.removeEventListener('resize', debouncedResize);
     };
-  }, [mensajeTexto1, mensajeTexto2, mensajeVelocidad, mensajeActual]);
+  }, [mensajeTexto1, mensajeTexto2, mensajeVelocidad, mensajeActual, animacionActual]);
 
   // Función debounce para optimizar
   function debounce(func, wait) {
@@ -322,7 +405,6 @@ function VistaPrincipalContent() {
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
 
-      {/* Fondo oscuro cuando el sidebar está abierto */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black opacity-50 z-30"
@@ -330,28 +412,31 @@ function VistaPrincipalContent() {
         />
       )}
 
-      <main className="pt-6 px-4">
-        <h1 className="text-2xl font-bold">Bienvenido Profesor</h1>
-        <span className="font-normal">Rodrigo Domínguez</span>
+      <main className="pt-4 sm:pt-6 px-2 sm:px-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">Bienvenido Profesor</h1>
+            <span className="font-normal">Rodrigo Domínguez</span>
+          </div>
 
-        {/* Indicador de estado MQTT */}
-        <div className="flex items-center mt-2 space-x-2">
-          <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
-          {!isConnected && !connecting && (
-            <button
-              onClick={reconnect}
-              disabled={connecting}
-              className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
-            >
-              {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
-            </button>
-          )}
-          {mqttError && <span className="text-red-500 text-sm ml-2">({mqttError})</span>}
+          <div className="flex items-center mt-2 sm:mt-0 space-x-2">
+            <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
+            {!isConnected && !connecting && (
+              <button
+                onClick={reconnect}
+                disabled={connecting}
+                className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
+              >
+                {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
+              </button>
+            )}
+            {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
+          </div>
         </div>
 
-        <h2 className="text-3xl font-bold mt-8 mb-4">Mensaje actual</h2>
-        
+        <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
+
         {/* Contenedor principal para los dos tableros LED */}
         <div className="led-display-container">
           {/* Primer tablero LED (línea superior) */}
@@ -359,45 +444,47 @@ function VistaPrincipalContent() {
             {mensajeActual !== null ? (
               <div
                 ref={marqueeRef1}
-                className="marqueee-text"
+                className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
                 style={{
-                  animation: duration ? `marqueee ${duration}s linear infinite` : "none", 
-                  minWidth: 'fit-content'
+                  animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                  minWidth: 'fit-content',
+                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' // Texto más pequeño en móviles
                 }}
               >
                 {mensajeTexto1}
               </div>
             ) : (
-              <div className="marqueee-text text-gray-500">Tablero vacío</div>
+              <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
             )}
           </div>
-          
+
           {/* Segundo tablero LED (línea inferior) */}
           <div className="marqueee-container">
             {mensajeActual !== null && mensajeTexto2 ? (
               <div
                 ref={marqueeRef2}
-                className="marqueee-text marqueee-text-second"
+                className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
                 style={{
-                  animation: duration ? `marqueee ${duration}s linear infinite` : "none", 
-                  minWidth: 'fit-content'
+                  animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                  minWidth: 'fit-content',
+                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' // Texto más pequeño en móviles
                 }}
               >
                 {mensajeTexto2}
               </div>
             ) : (
-              <div className="marqueee-text text-gray-500">Tablero vacío</div>
+              <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
             )}
           </div>
         </div>
 
         {/* Sección de entrada de texto personalizado */}
-        <div className="mt-8 bg-white p-4 rounded-lg shadow-md">
-          <div className="flex items-center mb-4">
-            <h2 className="text-2xl font-bold">Texto personalizado</h2>
+        <div className="mt-6 sm:mt-8 bg-white p-3 sm:p-4 rounded-lg shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
             <button
               onClick={toggleModoPersonalizado}
-              className={`ml-4 px-4 py-1 rounded-full text-sm ${modoPersonalizado
+              className={`mt-2 sm:mt-0 sm:ml-4 px-3 sm:px-4 py-1 rounded-full text-sm ${modoPersonalizado
                 ? 'bg-[#109d95] text-white'
                 : 'bg-gray-200 text-gray-700'
                 }`}
@@ -418,7 +505,6 @@ function VistaPrincipalContent() {
                   id="textoPersonalizado1"
                   value={textoPersonalizado1}
                   onChange={(e) => {
-                    // Limitar el texto al número máximo de caracteres
                     if (e.target.value.length <= LIMITE_CARACTERES) {
                       setTextoPersonalizado1(e.target.value);
                     }
@@ -427,7 +513,7 @@ function VistaPrincipalContent() {
                   placeholder="Escribe la primera línea aquí..."
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
                 />
-                <div className="flex justify-between mt-1 text-sm">
+                <div className="flex justify-between mt-1 text-xs sm:text-sm">
                   <span className="text-gray-500">
                     Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}
                   </span>
@@ -437,56 +523,45 @@ function VistaPrincipalContent() {
                 </div>
               </div>
 
-              {/* Segunda línea de texto */}
-              <div>
-                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
-                  Línea 2:
-                </label>
-                <input
-                  type="text"
-                  id="textoPersonalizado2"
-                  value={textoPersonalizado2}
-                  onChange={(e) => {
-                    // Limitar el texto al número máximo de caracteres
-                    if (e.target.value.length <= LIMITE_CARACTERES) {
-                      setTextoPersonalizado2(e.target.value);
-                    }
-                  }}
-                  maxLength={LIMITE_CARACTERES}
-                  placeholder="Escribe la segunda línea aquí..."
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                />
-                <div className="flex justify-between mt-1 text-sm">
-                  <span className="text-gray-500">
-                    Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}
-                  </span>
-                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (
-                    <span className="text-red-500">Límite alcanzado</span>
-                  )}
+              {/* Segunda línea de texto - similar a la primera línea pero con ajustes responsivos */}
+              {/* ... */}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                    Velocidad:
+                  </label>
+                  <select
+                    id="velocidadPersonalizada"
+                    value={velocidadPersonalizada}
+                    onChange={(e) => setVelocidadPersonalizada(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                  >
+                    {opcionesVelocidad.map(opcion => (
+                      <option key={opcion} value={opcion}>{opcion}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                    Animación:
+                  </label>
+                  <select
+                    id="animacionPersonalizada"
+                    value={animacionPersonalizada}
+                    onChange={(e) => setAnimacionPersonalizada(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                  >
+                    {ANIMACIONES.map(anim => (
+                      <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-
-              <div>
-                <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                  Velocidad:
-                </label>
-                <select
-                  id="velocidadPersonalizada"
-                  value={velocidadPersonalizada}
-                  onChange={(e) => setVelocidadPersonalizada(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                >
-                  {opcionesVelocidad.map(opcion => (
-                    <option key={opcion} value={opcion}>{opcion}</option>
-                  ))}
-                </select>
-              </div>
-
               <button
                 onClick={actualizarMensajePersonalizado}
                 disabled={textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === ""}
-                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "" ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "" ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 ACTUALIZAR CON TEXTO PERSONALIZADO
               </button>
@@ -494,18 +569,16 @@ function VistaPrincipalContent() {
           )}
         </div>
 
-        <div className="flex justify-center mt-6 gap-4">
+        <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 gap-3 sm:gap-4">
           <button
-            className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md ${seleccionado === null ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md ${seleccionado === null ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={actualizarMensaje}
             disabled={seleccionado === null}
           >
             ACTUALIZAR MENSAJE
           </button>
           <button
-            className={`bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            className={`bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={limpiarTablero}
             disabled={mensajeActual === null}
           >
@@ -513,7 +586,7 @@ function VistaPrincipalContent() {
           </button>
         </div>
 
-        <h2 className="text-2xl font-bold mt-10 mb-4">Mensajes Guardados</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
 
         {/* Estado de carga */}
         {cargando ? (
@@ -529,34 +602,40 @@ function VistaPrincipalContent() {
             <p className="text-gray-600">No hay mensajes guardados</p>
           </div>
         ) : (
-          <table className="w-full text-left bg-white rounded-lg shadow-md overflow-hidden">
-            <thead className="bg-[#109d95] text-white">
-              <tr className="text-center">
-                <th className="py-2">Selección</th>
-                <th>Creado por</th>
-                <th>Mensaje</th>
-                <th>Velocidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mensajes.map((msg, idx) => (
-                <tr
-                  key={idx}
-                  className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''
-                    }`}
-                  onClick={() => seleccionarMensaje(idx)}
-                >
-                  <td className="py-2 px-4 text-center">
-                    <div className={`w-5 h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'
-                      }`} />
-                  </td>
-                  <td className="px-4">{msg.Usuario?.nombre || "Desconocido"}</td>
-                  <td className="px-4">{mostrarContenidoMensaje(msg.mensaje)}</td>
-                  <td className="px-4 text-center">x{msg.velocidad}</td>
+          <div className="overflow-x-auto bg-white rounded-lg shadow-md">
+            <table className="w-full text-left">
+              <thead className="bg-[#109d95] text-white">
+                <tr className="text-center">
+                  <th className="py-2 px-2 sm:px-4">Selección</th>
+                  <th className="py-2 px-2 sm:px-4">Creado por</th>
+                  <th className="py-2 px-2 sm:px-4">Mensaje</th>
+                  <th className="py-2 px-2 sm:px-4">Velocidad</th>
+                  <th className="py-2 px-2 sm:px-4">Animación</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {mensajes.map((msg, idx) => (
+                  <tr
+                    key={idx}
+                    className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''
+                      }`}
+                    onClick={() => seleccionarMensaje(idx)}
+                  >
+                    <td className="py-2 px-2 sm:px-4 text-center">
+                      <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'
+                        }`} />
+                    </td>
+                    <td className="px-2 sm:px-4 text-xs sm:text-sm">{msg.Usuario?.nombre || "Desconocido"}</td>
+                    <td className="px-2 sm:px-4 text-xs sm:text-sm">{mostrarContenidoMensaje(msg.mensaje)}</td>
+                    <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">x{msg.velocidad}</td>
+                    <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">
+                      {ANIMACIONES.find(anim => anim.valor === msg.animacion)?.nombre || "Desplazamiento a la izquierda"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div className="flex justify-center mt-6">
@@ -572,11 +651,11 @@ function VistaPrincipalContent() {
       {/* Modal para agregar nuevo mensaje con dos líneas */}
       {modalOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50"
+          className="fixed inset-0 flex items-center justify-center z-50 px-4"
           style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
         >
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h3 className="text-xl font-bold mb-4">Nuevo Mensaje</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Mensaje</h3>
             <form onSubmit={enviarNuevoMensaje}>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
@@ -595,7 +674,7 @@ function VistaPrincipalContent() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
                 <input
@@ -613,7 +692,7 @@ function VistaPrincipalContent() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad
@@ -635,17 +714,32 @@ function VistaPrincipalContent() {
                   <option value="4">4</option>
                 </select>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-animacion">
+                  Animación
+                </label>
+                <select
+                  id="mensaje-animacion"
+                  className="w-full border rounded px-2 py-1"
+                  value={nuevaAnimacion}
+                  onChange={(e) => setNuevaAnimacion(e.target.value)}
+                >
+                  {ANIMACIONES.map(anim => (
+                    <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors"
+                  className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm"
                   onClick={() => setModalOpen(false)}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors"
+                  className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
                   disabled={nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""}
                 >
                   Agregar

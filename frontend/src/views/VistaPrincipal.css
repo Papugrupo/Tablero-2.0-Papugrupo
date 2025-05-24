@@ -1,39 +1,184 @@
-@keyframes marqueee {
-    0% {
-      transform: translateX(0) translateY(-50%);
-    }
-    100% {
-      transform: translateX(-100%) translateY(-50%);
-    }
+.marqueee-container{
+  position: relative;
+  overflow: hidden;
+  height: 10vh;
+  min-height: 70px;
+  width: 100%;
+  background-color: black;
+  border: 8px solid #ccc;
+  border-radius: 0.5rem;
+  box-shadow: inset 0 0 10px #000;
+}
+
+.marqueee-text {
+  position: absolute;
+  white-space: nowrap;
+  color: #dc2626;
+  font-family: 'Courier New', monospace;
+  font-size: clamp(32px, 8vw, 60px);
+  font-weight: bold;
+  text-shadow: 0 0 10px #ff0000;
+  will-change: transform;
+  line-height: 1.2;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Iniciamos desde fuera del contenedor para desplazamiento izquierda */
+  left: 100%;
+}
+
+.marqueee-text-second {
+  color: #dc2626;
+  text-shadow: 0 0 10px #ff0000;
+}
+
+/* Animaciones para el tablero LED */
+@keyframes marqueee-left {
+  0% { left: 100%; }
+  100% { left: -100%; }
+}
+
+@keyframes marqueee-right {
+  0% { right: 100%; left: auto; }
+  100% { right: -100%; left: auto; }
+}
+
+@keyframes marqueee-up {
+  0% { top: 100%; left: 20px; transform: translateY(0); }
+  100% { top: -50%; left: 20px; transform: translateY(0); }
+}
+
+@keyframes marqueee-down {
+  0% { top: -50%; left: 20px; transform: translateY(0); }
+  100% { top: 100%; left: 20px; transform: translateY(0); }
+}
+
+@keyframes marqueee-wipe {
+  0% { 
+    clip-path: inset(0 100% 0 0); 
+    left: 20px;
   }
-  
-  .marqueee-container{
-    position: relative;
-    overflow: hidden;
-    height: 10vh;
-    min-height: 70px;
-    width: 100%;
-    background-color: black;
-    border: 8px solid #ccc;
-    border-radius: 0.5rem;
-    box-shadow: inset 0 0 10px #000;
+  100% { 
+    clip-path: inset(0 0 0 0); 
+    left: 20px;
   }
-  
-  .marqueee-text {
-    position: absolute;
-    white-space: nowrap;
-    color: #dc2626;
-    font-family: 'Courier New', monospace;
-    font-size: clamp(32px, 8vw, 60px);
-    font-weight: bold;
-    text-shadow: 0 0 10px #ff0000;
-    will-change: transform;
-    line-height: 1.2;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    top: 50%;
-    transform: translateY(-50%);
-    /* Asegura que el texto comience completamente fuera */
-    padding-left: 100%;
+}
+
+
+@keyframes marqueee-closing {
+  0% { 
+    clip-path: inset(0 0 0 0); 
+    left: 20px;
   }
+  50% { 
+    clip-path: inset(0 50% 0 50%); 
+    left: 20px;
+  }
+  100% { 
+    clip-path: inset(0 0 0 0); 
+    left: 20px;
+  }
+}
+
+@keyframes marqueee-opening {
+  0% { 
+    clip-path: inset(0 50% 0 50%); 
+    left: 20px;
+  }
+  100% { 
+    clip-path: inset(0 0 0 0); 
+    left: 20px;
+  }
+}
+
+@keyframes marqueee-fade {
+  0% { 
+    opacity: 1; 
+    left: 20px;
+  }
+  50% { 
+    opacity: 0; 
+    left: 20px;
+  }
+  100% { 
+    opacity: 1; 
+    left: 20px;
+  }
+}
+
+
+
+@keyframes blink-caret {
+  0%, 100% { border-right: 4px solid transparent; }
+  50% { border-right: 4px solid #dc2626; }
+}
+
+
+/* Clases para cada tipo de animación */
+.marqueee-left {
+  animation-name: marqueee-left;
+  left: 100%;
+  transform: translateY(-50%);
+}
+
+.marqueee-right {
+  animation-name: marqueee-right;
+  right: 100%;
+  left: auto;
+  transform: translateY(-50%);
+}
+
+.marqueee-up {
+  animation-name: marqueee-up;
+  top: 100%;
+  left: 20px;
+  transform: none;
+}
+
+.marqueee-down {
+  animation-name: marqueee-down;
+  top: -50%;
+  left: 20px;
+  transform: none;
+}
+
+.marqueee-wipe {
+  animation-name: marqueee-wipe;
+  animation-timing-function: steps(30);
+  padding-left: 0;
+  left: 20px;
+  transform: translateY(-50%);
+}
+
+
+
+.marqueee-closing {
+  animation-name: marqueee-closing;
+  padding-left: 0;
+  left: 20px;
+  transform: translateY(-50%);
+}
+
+.marqueee-opening {
+  animation-name: marqueee-opening;
+  padding-left: 0;
+  left: 20px;
+  transform: translateY(-50%);
+}
+
+.marqueee-fade {
+  animation-name: marqueee-fade;
+  padding-left: 0;
+  left: 20px;
+  transform: translateY(-50%);
+}
+
+.marqueee-no-effect {
+  animation: none !important;
+  padding-left: 0;
+  left: 20px;
+  transform: translateY(-50%);
+}
+
