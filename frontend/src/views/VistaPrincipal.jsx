@@ -57,7 +57,7 @@ function VistaPrincipalContent() {
       console.error("Error al obtener ID de tableros:", err);
       setError("No se pudieron cargar los ID de tableros.");
     }
-  };  
+  };
 
   const handleNuevoTablero = async () => {
     await crearTablero();
@@ -65,7 +65,7 @@ function VistaPrincipalContent() {
   }
 
   useEffect(() => {
-    
+
     obtenerIdTableros();
   }, []); // Llama a la función al cargar el componente
 
@@ -185,16 +185,16 @@ function VistaPrincipalContent() {
       // Actualizar el estado para mostrar el mensaje personalizado
       setMensajeActual("personalizado");
 
-      setAnimacionActual(animacionPersonalizada)
+      setAnimacionActual(animacionPersonalizada);
+
       // Publicar mensaje personalizado en MQTT
       if (isConnected) {
-        // Crear el mensaje con formato texto1\ntexto2
-        const mensajeTexto = `${textoPersonalizado1.trim()}\n${textoPersonalizado2.trim()}`;
-
+        // MODIFICACIÓN: Enviar texto1 y texto2 como propiedades separadas
         const mensajeAPublicar = {
-          mensaje: mensajeTexto, // Enviamos el mensaje en formato "texto1\ntexto2"
+          texto1: textoPersonalizado1.trim(),
+          texto2: textoPersonalizado2.trim(),
           velocidad: velocidadPersonalizada,
-          animacion: animacionPersonalizada // Nueva propiedad para la animación
+          animacion: animacionPersonalizada
         };
 
         try {
@@ -423,8 +423,8 @@ function VistaPrincipalContent() {
   // Opciones de velocidad predefinidas
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
 
-  const handleModalOpen = () =>{
-    
+  const handleModalOpen = () => {
+
     setModalOpen(true)
   }
 
@@ -508,12 +508,12 @@ function VistaPrincipalContent() {
 
         <div className="flex w-full justify-end items-center mt-4">
           <button
-              className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 ' : ''
-                }`}
-              onClick={handleNuevoTablero}
-            >
-              CREAR NUEVO TABLERO
-            </button>
+            className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 ' : ''
+              }`}
+            onClick={handleNuevoTablero}
+          >
+            CREAR NUEVO TABLERO
+          </button>
         </div>
 
         {/* Sección de entrada de texto personalizado */}
@@ -556,6 +556,30 @@ function VistaPrincipalContent() {
                     Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}
                   </span>
                   {textoPersonalizado1.length >= LIMITE_CARACTERES && (
+                    <span className="text-red-500">Límite alcanzado</span>
+                  )}
+                </div>
+                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
+                  Línea 2:
+                </label>
+                <input
+                  type="text"
+                  id="textoPersonalizado2"
+                  value={textoPersonalizado2}
+                  onChange={(e) => {
+                    if (e.target.value.length <= LIMITE_CARACTERES) {
+                      setTextoPersonalizado2(e.target.value);
+                    }
+                  }}
+                  maxLength={LIMITE_CARACTERES}
+                  placeholder="Escribe la segunda línea aquí (opcional)..."
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                />
+                <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                  <span className="text-gray-500">
+                    Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}
+                  </span>
+                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (
                     <span className="text-red-500">Límite alcanzado</span>
                   )}
                 </div>
@@ -622,7 +646,7 @@ function VistaPrincipalContent() {
           >
             LIMPIAR TABLERO
           </button>
-          
+
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
@@ -732,7 +756,6 @@ function VistaPrincipalContent() {
                 </div>
               </div>
 
-<<<<<<< HEAD
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Tableros
@@ -751,6 +774,7 @@ function VistaPrincipalContent() {
                   ))}
                 </select>
               </div>
+
               
 =======
 >>>>>>> origin/Omar
