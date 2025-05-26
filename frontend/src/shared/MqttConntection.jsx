@@ -25,13 +25,19 @@ export const MqttProvider = ({ children, brokerUrl = import.meta.env.VITE_BROKER
     if (connecting) return;
     
     setConnecting(true);
-    console.log(`🔄 Conectando a MQTT: ${brokerUrl}`);
     
-    // Usar la URL del backend
-    const mqttClient = mqtt.connect(brokerUrl, {
+    // Asegurar que la URL use wss:// para HTTPS
+    let secureBrokerUrl = brokerUrl;
+    if (window.location.protocol === 'https:' && brokerUrl.startsWith('ws://')) {
+      secureBrokerUrl = brokerUrl.replace('ws://', 'wss://');
+    }
+    
+    console.log(`🔄 Conectando a MQTT: ${secureBrokerUrl}`);
+    
+    const mqttClient = mqtt.connect(secureBrokerUrl, {
       ...options,
       clientId: `tablero_papugrupo_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-      reconnectPeriod: 0, // Desactivamos la reconexión automática para manejarla nosotros
+      reconnectPeriod: 0,
     });
     
     setClient(mqttClient);
