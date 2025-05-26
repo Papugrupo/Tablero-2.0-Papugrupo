@@ -19,11 +19,12 @@ jobs:
 
     - name: Install dependencies
       run: cd frontend && npm install
-
+    
     - name: Create .env
       run: |
-        echo "VITE_BROKER_MQTT_URL=${{ secrets.VITE_BROKER_MQTT_URL }}" >> .env
-        echo "VITE_API_BACKEND=${{ secrets.VITE_API_BACKEND }}" >> .env
+        echo "VITE_BROKER_MQTT_URL=\"${{ secrets.VITE_BROKER_MQTT_URL }}\"" >> .env
+        echo "VITE_API_BACKEND=\"${{ secrets.VITE_API_BACKEND }}\"" >> .env
+
 
     - name: Build React project
       run: cd frontend && npm run build
