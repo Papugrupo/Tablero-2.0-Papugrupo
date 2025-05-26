@@ -22,6 +22,7 @@ jobs:
     
     - name: Create .env
       run: |
+        cd frontend
         echo "VITE_BROKER_MQTT_URL=\"${{ secrets.VITE_BROKER_MQTT_URL }}\"" >> .env
         echo "VITE_API_BACKEND=\"${{ secrets.VITE_API_BACKEND }}\"" >> .env
 
