@@ -775,6 +775,9 @@ function VistaPrincipalContent() {
                 </select>
               </div>
 
+              
+=======
+>>>>>>> origin/Omar
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad
