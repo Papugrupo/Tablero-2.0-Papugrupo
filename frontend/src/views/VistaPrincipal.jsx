@@ -3,7 +3,8 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje, obtenerTableros, crearTablero } from "../services/tablero.service"; // Import the API functions
+import { obtenerMensajes, guardarMensaje, obtenerTableros } from "../services/tablero.service"; // Import the API functions
+import ModalNewTablero from "../components/modalNewTablero";
 
 // Main component with MQTT Provider wrapper
 export default function VistaPrincipal() {
@@ -32,6 +33,7 @@ function VistaPrincipalContent() {
 
   // NUEVOS ESTADOS PARA EL MODAL
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTableroOpen,setModalTableroOpen] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevoTablero, setNuevoTablero] = useState("");
@@ -59,13 +61,11 @@ function VistaPrincipalContent() {
     }
   };
 
-  const handleNuevoTablero = async () => {
-    await crearTablero();
-    await obtenerIdTableros();
+  const handleNuevoTablero = () => {
+    setModalTableroOpen(true);
   }
 
   useEffect(() => {
-
     obtenerIdTableros();
   }, []); // Llama a la función al cargar el componente
 
@@ -775,9 +775,6 @@ function VistaPrincipalContent() {
                 </select>
               </div>
 
-              
-=======
->>>>>>> origin/Omar
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad
@@ -834,6 +831,7 @@ function VistaPrincipalContent() {
           </div>
         </div>
       )}
+      {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros}/>}
     </div>
   );
 }
