@@ -769,7 +769,7 @@ function VistaPrincipalContent() {
                   <option value="">Seleccionar tableros</option>
                   {idTableros.map((tablero) => (
                     <option key={tablero.idTablero} value={tablero.idTablero}>
-                      {tablero.idTablero}
+                      {tablero.nombreTablero}
                     </option>
                   ))}
                 </select>
