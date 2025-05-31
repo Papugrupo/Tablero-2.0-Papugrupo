@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje, obtenerTableros } from "../services/tablero.service"; // Import the API functions
+import { obtenerMensajes, guardarMensaje, obtenerTableros} from "../services/tablero.service"; // Import the API functions
 import ModalNewTablero from "../components/modalNewTablero";
 
 // Main component with MQTT Provider wrapper
@@ -33,7 +33,7 @@ function VistaPrincipalContent() {
 
   // NUEVOS ESTADOS PARA EL MODAL
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalTableroOpen,setModalTableroOpen] = useState(false);
+  const [modalTableroOpen, setModalTableroOpen] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevoTablero, setNuevoTablero] = useState("");
@@ -47,14 +47,18 @@ function VistaPrincipalContent() {
   const [error, setError] = useState(null); // Estado para manejar errores
 
   // ID del tablero (deberías obtenerlo de props o contexto)
-  const idTablero = "f77fa409-1fbd-4186-af7d-68478f8cf45a"; // Cambiar según corresponda
   const [idTableros, setIdTableros] = useState([]); // Estado para manejar los tableros
+  const [tableroSeleccionado, setTableroSeleccionado] = useState("");
 
   const obtenerIdTableros = async () => {
     try {
       const data = await obtenerTableros(); // Llama a la función para obtener los tableros
       console.log("ID de tableros obtenidos:", data);
       setIdTableros(data); // Actualiza el estado con los ID de los tableros
+      if (data.length === 1 && !tableroSeleccionado) {
+        console.log("Solo hay un tablero disponible, seleccionándolo automáticamente:", data[0].idTablero);
+        setTableroSeleccionado(data[0].idTablero);
+      }
     } catch (err) {
       console.error("Error al obtener ID de tableros:", err);
       setError("No se pudieron cargar los ID de tableros.");
@@ -105,7 +109,7 @@ function VistaPrincipalContent() {
     const cargarMensajes = async () => {
       try {
         setCargando(true);
-        const mensajesObtenidos = await obtenerMensajes(idTablero);
+        const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
         setMensajes(mensajesObtenidos);
         setError(null);
       } catch (err) {
@@ -122,7 +126,7 @@ function VistaPrincipalContent() {
     };
 
     cargarMensajes();
-  }, [idTablero]);
+  }, [tableroSeleccionado]);
 
   // Función para separar las líneas del mensaje
   const obtenerLineasDeMensaje = (mensaje) => {
@@ -291,12 +295,11 @@ function VistaPrincipalContent() {
 
       // Llama al endpoint para guardar el mensaje
       const respuesta = await guardarMensaje({
-        idTableroRef: nuevoTablero, // idTablero definido en el componente
+        idTableroRef: tableroSeleccionado, // idTablero definido en el componente
         mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
         velocidad: velocidadFinal,
         animacion: nuevaAnimacion // Guardar la animación seleccionada
       });
-      console.log("Respuesta del backend:", respuesta);
 
       // Actualiza la lista de mensajes
       setMensajes([...mensajes, {
@@ -460,9 +463,55 @@ function VistaPrincipalContent() {
               </button>
             )}
             {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
+
+          </div>
+
+        </div>
+        <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700">
+            Tablero actual:
+          </label>
+          <div className="relative w-full sm:w-auto">
+            <select
+              id="tablero-selector"
+              className="w-full sm:w-64 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
+              value={tableroSeleccionado}
+              onChange={(e) => {
+                setTableroSeleccionado(e.target.value);
+                // Cargar mensajes del nuevo tablero seleccionado
+                const cargarMensajesDelTablero = async () => {
+                  try {
+                    setCargando(true);
+                    const mensajesObtenidos = await obtenerMensajes(e.target.value);
+                    setMensajes(mensajesObtenidos);
+                    setError(null);
+                  } catch (err) {
+                    console.error('Error al cargar mensajes del tablero:', err);
+                    setError('No se pudieron cargar los mensajes del tablero seleccionado');
+                    setMensajes([]);
+                  } finally {
+                    setCargando(false);
+                  }
+                };
+                cargarMensajesDelTablero();
+              }}
+            >
+              {idTableros.length === 0 ? (
+                <option value="">No hay tableros disponibles</option>
+              ) : (
+                idTableros.map((tablero) => (
+                  <option key={tablero.idTablero} value={tablero.idTablero}>
+                    {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" />
+
+            </div>
           </div>
         </div>
-
         <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
 
         {/* Contenedor principal para los dos tableros LED */}
@@ -584,9 +633,6 @@ function VistaPrincipalContent() {
                   )}
                 </div>
               </div>
-
-              {/* Segunda línea de texto - similar a la primera línea pero con ajustes responsivos */}
-              {/* ... */}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -755,26 +801,6 @@ function VistaPrincipalContent() {
                   </span>
                 </div>
               </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
-                  Tableros
-                </label>
-                <select
-                  id="mensaje-tablero"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevoTablero}
-                  onChange={(e) => setNuevoTablero(e.target.value)}
-                >
-                  <option value="">Seleccionar tableros</option>
-                  {idTableros.map((tablero) => (
-                    <option key={tablero.idTablero} value={tablero.idTablero}>
-                      {tablero.nombreTablero}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
                   Velocidad
@@ -831,7 +857,7 @@ function VistaPrincipalContent() {
           </div>
         </div>
       )}
-      {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros}/>}
+      {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
     </div>
   );
 }

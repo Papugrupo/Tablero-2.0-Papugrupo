@@ -6,7 +6,6 @@ import Cookies from 'js-cookie';
 export const obtenerMensajes = async (idTablero) => {
     try {
       const response = await axiosAuth.get(`api/board/messages/${idTablero}`);
-      console.log('Mensajes obtenidos:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error al obtener la mascota:', error);
@@ -22,8 +21,6 @@ export const guardarMensaje = async ({ idTableroRef, mensaje, velocidad,animacio
             velocidad,
             animacion
         });
-        console.log("Mensaje guardado:", response.data);
-        console.log("Mensaje guardado:", response);
         return response.data;
     } catch (error) {
         console.error("Error al guardar el mensaje:", error);
@@ -56,10 +53,8 @@ export const crearGrupo = async ({ nombreGrupo }) => {
         const response = await axiosAuth.post('api/user/add-group', {
             nombreGrupo
         });
-        console.log("Grupo creado:", response.data);
 
         await unirseGrupo({ idGrupo: response.data.idGrupo });
-        console.log("Grupo seleccionado:", response);
         return response.data;
     } catch (error) {
         console.error("Error al crear grupo: ", error);
