@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje, obtenerTableros} from "../services/tablero.service"; // Import the API functions
+import { obtenerMensajes, guardarMensaje, obtenerTableros } from "../services/tablero.service"; // Import the API functions
 import ModalNewTablero from "../components/modalNewTablero";
 
 // Main component with MQTT Provider wrapper
@@ -55,10 +55,7 @@ function VistaPrincipalContent() {
       const data = await obtenerTableros(); // Llama a la función para obtener los tableros
       console.log("ID de tableros obtenidos:", data);
       setIdTableros(data); // Actualiza el estado con los ID de los tableros
-      if (data.length === 1 && !tableroSeleccionado) {
-        console.log("Solo hay un tablero disponible, seleccionándolo automáticamente:", data[0].idTablero);
-        setTableroSeleccionado(data[0].idTablero);
-      }
+
     } catch (err) {
       console.error("Error al obtener ID de tableros:", err);
       setError("No se pudieron cargar los ID de tableros.");
@@ -496,8 +493,11 @@ function VistaPrincipalContent() {
                 cargarMensajesDelTablero();
               }}
             >
+              <option value="" disabled={tableroSeleccionado !== ""}>
+                Seleccione un tablero
+              </option>
               {idTableros.length === 0 ? (
-                <option value="">No hay tableros disponibles</option>
+                <option value="" disabled>No hay tableros disponibles</option>
               ) : (
                 idTableros.map((tablero) => (
                   <option key={tablero.idTablero} value={tablero.idTablero}>

@@ -8,7 +8,7 @@ export const obtenerMensajes = async (idTablero) => {
       const response = await axiosAuth.get(`api/board/messages/${idTablero}`);
       return response.data;
     } catch (error) {
-      console.error('Error al obtener la mascota:', error);
+      console.error('Error al obtener la mensajes:', error);
       throw error;
     }
 };
