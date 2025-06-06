@@ -81,10 +81,13 @@ export const unirseGrupo = async ({ idGrupo }) => {
     }
 }
 
-export const crearTablero = async ({nombreTablero}) => {
+export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, topicoTablero}) => {
     try {
         const response = await axiosAuth.post('api/board/add-board',{
-            nombreTablero: nombreTablero
+            nombreTablero: nombreTablero,
+            protocoloTablero: protocoloTablero,
+            ipTablero: ipTablero,
+            topicoTablero: topicoTablero
         });
 
         console.log("Tablero:", response);
