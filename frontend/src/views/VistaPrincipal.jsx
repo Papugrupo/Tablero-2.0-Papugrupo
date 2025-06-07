@@ -1,10 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
+import Cookies from 'js-cookie';
+import { jwtDecode } from 'jwt-decode';
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
+import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje, obtenerTableros } from "../services/tablero.service"; // Import the API functions
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service"; // Import the API functions
+import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
+
 
 // Main component with MQTT Provider wrapper
 export default function VistaPrincipal() {
@@ -19,6 +24,17 @@ export default function VistaPrincipal() {
 function VistaPrincipalContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
+  const [tableroInfo, setTableroInfo] = useState(null); // Información del tablero seleccionado
+  const [notification, setNotification] = useState({
+    show: false,
+    type: 'success', // 'success', 'error', 'warning'
+    title: '',
+    message: ''
+  });
+  const [usuario, setUsuario] = useState({
+    nombre: "",
+    apellido: ""
+  });
   const [mensajes, setMensajes] = useState([{
     id: "a",
     mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo",
@@ -43,20 +59,94 @@ function VistaPrincipalContent() {
   const marqueeRef1 = useRef(null);
   const marqueeRef2 = useRef(null);
   const [duration, setDuration] = useState(null);
-  const [cargando, setCargando] = useState(true); // Estado para mostrar carga
-  const [error, setError] = useState(null); // Estado para manejar errores
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState(null);
 
   // ID del tablero (deberías obtenerlo de props o contexto)
   const [idTableros, setIdTableros] = useState([]); // Estado para manejar los tableros
   const [tableroSeleccionado, setTableroSeleccionado] = useState("");
 
+  const showNotification = (type, title, message, duration = 3000) => {
+    setNotification({
+      show: true,
+      type,
+      title,
+      message
+    });
+
+
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, duration);
+  };
+
+  const obtenerDatosUsuarioDesdeToken = async () => {
+    setCargando(true);
+    try {
+      const token = Cookies.get('token'); // Obtener token desde cookies
+
+      if (token) {
+        // Decodifica el token JWT para obtener la información del usuario
+        const decodedToken = jwtDecode(token);
+
+        // Intenta obtener datos más completos desde el backend usando el ID del usuario
+        if (decodedToken.idUsuario) {
+          try {
+            // Llamar al servicio para obtener datos completos del usuario
+            const usuarioCompleto = await obtenerUsuario(decodedToken.idUsuario);
+            if (usuarioCompleto) {
+              setUsuario({
+                nombre: usuarioCompleto.nombre || decodedToken.nombre || "Usuario",
+                apellido: usuarioCompleto.apellido || decodedToken.apellido || ""
+              });
+              return;
+            }
+          } catch (apiError) {
+            console.error("Error al obtener datos de usuario desde API:", apiError);
+            // Si falla la API, continuamos con los datos del token
+          }
+        }
+
+        // Si no se pudo obtener desde la API, usar datos del token
+        setUsuario({
+          nombre: decodedToken.nombre || "Usuario",
+          apellido: decodedToken.apellido || ""
+        });
+
+      } else {
+        console.log("❌ No se encontró token en las cookies");
+        setUsuario({
+          nombre: "Invitado",
+          apellido: ""
+        });
+      }
+    } catch (error) {
+      console.error("Error al decodificar token:", error);
+      setUsuario({
+        nombre: "Usuario",
+        apellido: ""
+      });
+    }
+    finally {
+      setCargando(false);
+    }
+  };
+
+  // Añade este useEffect después de tus otros useEffect
+  useEffect(() => {
+    obtenerDatosUsuarioDesdeToken();
+  }, []);
+
   const obtenerIdTableros = async () => {
+    setCargando(true);
     try {
       const data = await obtenerTableros(); // Llama a la función para obtener los tableros
       console.log("ID de tableros obtenidos:", data);
       setIdTableros(data); // Actualiza el estado con los ID de los tableros
+      setCargando(false);
 
     } catch (err) {
+      setCargando(false);
       console.error("Error al obtener ID de tableros:", err);
       setError("No se pudieron cargar los ID de tableros.");
     }
@@ -104,9 +194,11 @@ function VistaPrincipalContent() {
   // Cargar mensajes al iniciar el componente
   useEffect(() => {
     const cargarMensajes = async () => {
+      setCargando(true);
       try {
-        setCargando(true);
         const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
+        const obtenerInfo = await obtenerInfoTablero(tableroSeleccionado);
+        setTableroInfo(obtenerInfo);
         setMensajes(mensajesObtenidos);
         setError(null);
       } catch (err) {
@@ -148,21 +240,47 @@ function VistaPrincipalContent() {
     if (seleccionado !== null && mensajes[seleccionado]) {
       setMensajeActual(seleccionado);
       setAnimacionActual(mensajes[seleccionado].animacion || "PA_SCROLL_LEFT");
+
       // Publicar mensaje en MQTT cuando se actualiza
       if (isConnected) {
         const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
         const mensajeAPublicar = {
           texto1: lineas[0],
           texto2: lineas[1],
-          velocidad: `x${mensajes[seleccionado].velocidad}`, // Formato x1, x2, etc.
-          animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT" // Usar animación guardada o la predeterminada
+          velocidad: `x${mensajes[seleccionado].velocidad}`,
+          animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"
         };
 
-        // Publicar en el tópico "mensaje/actualizar"
-        publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
-        console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+        try {
+          // Publicar en el tópico "mensaje/actualizar"
+          publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+          console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+
+          // Mostrar feedback visual de éxito
+          showNotification(
+            'success',
+            'Mensaje enviado',
+            'El mensaje ha sido enviado correctamente al tablero LED'
+          );
+        } catch (error) {
+          console.error('❌ Error al publicar mensaje MQTT:', error);
+
+          // Mostrar feedback visual de error
+          showNotification(
+            'error',
+            'Error en el envío',
+            'No se pudo enviar el mensaje al tablero LED'
+          );
+        }
       } else {
         console.warn('❌ No se pudo publicar el mensaje: No hay conexión MQTT');
+
+        // Mostrar feedback visual de advertencia
+        showNotification(
+          'warning',
+          'Sin conexión',
+          'No hay conexión MQTT. El mensaje se mostrará localmente pero no se enviará al tablero físico.'
+        );
       }
 
       setSeleccionado(null); // Limpiar selección
@@ -175,7 +293,11 @@ function VistaPrincipalContent() {
     if (textoPersonalizado1.trim() !== "" || textoPersonalizado2.trim() !== "") {
       // Verificar que no exceda el límite de caracteres
       if (textoPersonalizado1.length > LIMITE_CARACTERES || textoPersonalizado2.length > LIMITE_CARACTERES) {
-        alert(`El mensaje excede el límite de ${LIMITE_CARACTERES} caracteres por línea permitidos para MQTT.`);
+        showNotification(
+          'warning',
+          'Límite excedido',
+          `El mensaje excede el límite de ${LIMITE_CARACTERES} caracteres por línea permitidos para MQTT.`
+        );
         return;
       }
 
@@ -185,12 +307,10 @@ function VistaPrincipalContent() {
 
       // Actualizar el estado para mostrar el mensaje personalizado
       setMensajeActual("personalizado");
-
       setAnimacionActual(animacionPersonalizada);
 
       // Publicar mensaje personalizado en MQTT
       if (isConnected) {
-        // MODIFICACIÓN: Enviar texto1 y texto2 como propiedades separadas
         const mensajeAPublicar = {
           texto1: textoPersonalizado1.trim(),
           texto2: textoPersonalizado2.trim(),
@@ -204,13 +324,32 @@ function VistaPrincipalContent() {
 
           publish('mensaje/actualizar', mensajeJSON);
           console.log(`✅ Mensaje personalizado publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+
+          // Mostrar feedback de éxito
+          showNotification(
+            'success',
+            'Mensaje enviado',
+            'El texto personalizado ha sido enviado correctamente al tablero LED'
+          );
         } catch (error) {
           console.error(`❌ Error al publicar mensaje: ${error.message}`);
-          alert(`Error al enviar mensaje: ${error.message}`);
+
+          // Mostrar feedback de error
+          showNotification(
+            'error',
+            'Error en el envío',
+            `No se pudo enviar el mensaje: ${error.message}`
+          );
         }
       } else {
         console.warn('❌ No se pudo publicar el mensaje personalizado: No hay conexión MQTT');
-        alert('No hay conexión MQTT. Revisa la conexión e intenta de nuevo.');
+
+        // Mostrar feedback de advertencia
+        showNotification(
+          'warning',
+          'Sin conexión',
+          'No hay conexión MQTT. El mensaje se mostrará localmente pero no se enviará al tablero físico.'
+        );
       }
 
       setSeleccionado(null); // Limpiar selección
@@ -239,10 +378,35 @@ function VistaPrincipalContent() {
 
     // Publicar mensaje de limpieza en MQTT
     if (isConnected) {
-      publish('mensaje/actualizar', JSON.stringify({ comando: 'limpiar' }));
-      console.log('✅ Comando de limpieza publicado en MQTT');
+      try {
+        publish('mensaje/actualizar', JSON.stringify({ comando: 'limpiar' }));
+        console.log('✅ Comando de limpieza publicado en MQTT');
+
+        // Mostrar feedback de éxito
+        showNotification(
+          'success',
+          'Tablero limpiado',
+          'Se ha enviado la orden de limpieza al tablero LED'
+        );
+      } catch (error) {
+        console.error('❌ Error al enviar comando de limpieza:', error);
+
+        // Mostrar feedback de error
+        showNotification(
+          'error',
+          'Error en la limpieza',
+          'No se pudo enviar la orden de limpieza al tablero'
+        );
+      }
     } else {
       console.warn('❌ No se pudo publicar el comando de limpieza: No hay conexión MQTT');
+
+      // Mostrar feedback de advertencia
+      showNotification(
+        'warning',
+        'Sin conexión',
+        'No hay conexión MQTT. El tablero se ha limpiado localmente pero no se ha enviado la orden al dispositivo físico.'
+      );
     }
   };
 
@@ -269,48 +433,66 @@ function VistaPrincipalContent() {
     );
   };
 
-  // NUEVA FUNCIÓN: Manejo para enviar el nuevo mensaje
   const enviarNuevoMensaje = async (e) => {
     e.preventDefault();
-    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return; // Al menos una línea debe tener contenido
+    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return;
 
-    // Si se ingresó velocidad, debe ser un número entero o float
-    const velocidadInput = nuevaVelocidad.trim();
-    const regex = /^[0-9]+(\.[0-9]+)?$/;
-    if (velocidadInput !== "" && !regex.test(velocidadInput)) {
-      alert("La velocidad debe ser numérica, por ejemplo: 2 o 2.5");
+    // Si no hay tablero seleccionado
+    if (!tableroSeleccionado) {
+      showNotification('warning', 'Seleccione un tablero', 'Debe seleccionar un tablero antes de guardar un mensaje.');
       return;
     }
 
-    // Si se ingresa velocidad, se le antepone la "x", caso contrario se usa "x1"
-    // Para el endpoint extraemos el número
+    // Validación de velocidad
+    const velocidadInput = nuevaVelocidad.trim();
+    const regex = /^[0-9]+(\.[0-9]+)?$/;
+    if (velocidadInput !== "" && !regex.test(velocidadInput)) {
+      showNotification('error', 'Formato incorrecto', 'La velocidad debe ser numérica, por ejemplo: 2 o 2.5');
+      return;
+    }
+
     const velocidadFinal = velocidadInput === "" ? 1 : parseFloat(velocidadInput);
+    setCargando(true);
 
     try {
-      // Crear el mensaje con formato texto1\ntexto2
       const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`;
 
-      // Llama al endpoint para guardar el mensaje
       const respuesta = await guardarMensaje({
-        idTableroRef: tableroSeleccionado, // idTablero definido en el componente
-        mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
+        idTableroRef: tableroSeleccionado,
+        mensaje: mensajeCompleto,
         velocidad: velocidadFinal,
-        animacion: nuevaAnimacion // Guardar la animación seleccionada
+        animacion: nuevaAnimacion
       });
 
-      // Actualiza la lista de mensajes
       setMensajes([...mensajes, {
-        mensaje: mensajeCompleto, // Guardar en formato texto1\ntexto2
+        mensaje: mensajeCompleto,
         velocidad: velocidadFinal,
-        animacion: nuevaAnimacion // Añadir animación al mensaje local
+        animacion: nuevaAnimacion
       }]);
+
       setNuevoTexto1("");
       setNuevoTexto2("");
       setNuevaVelocidad("");
-      setNuevaAnimacion("PA_SCROLL_LEFT"); // Resetear a la animación predeterminada
+      setNuevaAnimacion("PA_SCROLL_LEFT");
       setModalOpen(false);
-    } catch {
-      alert("Error al guardar el mensaje. Revisa la consola para más información.");
+
+      // Mostrar notificación de éxito
+      showNotification(
+        'success',
+        'Mensaje guardado',
+        ' El mensaje ha sido guardado exitosamente en el tablero.'
+      );
+
+    } catch (error) {
+      console.error("Error al guardar mensaje:", error);
+      // Mostrar notificación de error
+      showNotification(
+        'error',
+        'Error al guardar',
+        'No se pudo guardar el mensaje. Intente nuevamente.'
+      );
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -443,8 +625,8 @@ function VistaPrincipalContent() {
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Bienvenido Profesor</h1>
-            <span className="font-normal">Rodrigo Domínguez</span>
+            <h1 className="text-xl sm:text-2xl font-bold">Bienvenido</h1>
+            <span className="font-normal text-lg sm:text-xl">{usuario.nombre} {usuario.apellido}</span>
           </div>
 
           <div className="flex items-center mt-2 sm:mt-0 space-x-2">
@@ -464,52 +646,104 @@ function VistaPrincipalContent() {
           </div>
 
         </div>
-        <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
-          <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700">
-            Tablero actual:
-          </label>
-          <div className="relative w-full sm:w-auto">
-            <select
-              id="tablero-selector"
-              className="w-full sm:w-64 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
-              value={tableroSeleccionado}
-              onChange={(e) => {
-                setTableroSeleccionado(e.target.value);
-                // Cargar mensajes del nuevo tablero seleccionado
-                const cargarMensajesDelTablero = async () => {
-                  try {
-                    setCargando(true);
-                    const mensajesObtenidos = await obtenerMensajes(e.target.value);
-                    setMensajes(mensajesObtenidos);
-                    setError(null);
-                  } catch (err) {
-                    console.error('Error al cargar mensajes del tablero:', err);
-                    setError('No se pudieron cargar los mensajes del tablero seleccionado');
-                    setMensajes([]);
-                  } finally {
-                    setCargando(false);
-                  }
-                };
-                cargarMensajesDelTablero();
-              }}
-            >
-              <option value="" disabled={tableroSeleccionado !== ""}>
-                Seleccione un tablero
-              </option>
-              {idTableros.length === 0 ? (
-                <option value="" disabled>No hay tableros disponibles</option>
-              ) : (
-                idTableros.map((tablero) => (
-                  <option key={tablero.idTablero} value={tablero.idTablero}>
-                    {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+        <div className="mt-2 sm:mt-3">
+          <div className="flex flex-col sm:flex-row w-full gap-4">
+            {/* Contenedor del selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Tablero actual:
+              </label>
+              <div className="relative w-full sm:w-64">
+                <select
+                  id="tablero-selector"
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
+                  value={tableroSeleccionado}
+                  onChange={(e) => {
+                    setTableroSeleccionado(e.target.value);
+                    // Cargar mensajes del nuevo tablero seleccionado
+                    const cargarMensajesDelTablero = async () => {
+                      try {
+                        setCargando(true);
+                        const mensajesObtenidos = await obtenerMensajes(e.target.value);
+                        const obtenerInfo = await obtenerInfoTablero(e.target.value);
+                        setTableroInfo(obtenerInfo);
+                        setMensajes(mensajesObtenidos);
+                        setError(null);
+                      } catch (err) {
+                        console.error('Error al cargar mensajes del tablero:', err);
+                        setError('No se pudieron cargar los mensajes del tablero seleccionado');
+                        setMensajes([]);
+                      } finally {
+                        setCargando(false);
+                      }
+                    };
+                    cargarMensajesDelTablero();
+                  }}
+                >
+                  <option value="" disabled={tableroSeleccionado !== ""}>
+                    Seleccione un tablero
                   </option>
-                ))
-              )}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" />
-
+                  {idTableros.length === 0 ? (
+                    <option value="" disabled>No hay tableros disponibles</option>
+                  ) : (
+                    idTableros.map((tablero) => (
+                      <option key={tablero.idTablero} value={tablero.idTablero}>
+                        {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
+            {tableroInfo && tableroSeleccionado && (
+              <div className="flex-1 bg-white rounded-lg shadow-md p-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
+                    <p className="text-xs text-gray-500">
+                      Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end">
+                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                      {tableroInfo.Mensajes?.length || 0} mensajes guardados
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ID: {tableroInfo.idTablero.substring(0, 8)}...
+                    </p>
+                  </div>
+                </div>
+
+                {/* Información técnica del tablero */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                  <div className="mt-1 grid grid-cols-1 gap-1">
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">IP:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">Protocolo:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">Tópico:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
@@ -734,7 +968,7 @@ function VistaPrincipalContent() {
                       <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'
                         }`} />
                     </td>
-                    <td className="px-2 sm:px-4 text-xs sm:text-sm">{msg.Usuario?.nombre || "Desconocido"}</td>
+                    <td className="px-2 sm:px-4 text-xs sm:text-sm">{msg.Usuario?.nombre || usuario.nombre || "Desconocido"}</td>
                     <td className="px-2 sm:px-4 text-xs sm:text-sm">{mostrarContenidoMensaje(msg.mensaje)}</td>
                     <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">x{msg.velocidad}</td>
                     <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">
@@ -857,7 +1091,33 @@ function VistaPrincipalContent() {
           </div>
         </div>
       )}
+      <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
+      {notification.show && (
+        <div
+          className={`fixed bottom-0 right-0 m-6 w-72 shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' :
+            notification.type === 'error' ? 'bg-white border-red-500' :
+              'bg-white border-yellow-500'
+            }`}
+          role="alert"
+        >
+          <strong className={`font-semibold block sm:inline ${notification.type === 'success' ? 'text-green-700' :
+            notification.type === 'error' ? 'text-red-700' :
+              'text-yellow-700'
+            }`}>
+            {notification.title}
+          </strong>
+          <span className="block sm:inline text-gray-600 mt-2">
+            {notification.message}
+          </span>
+          <button
+            onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          >
+            <span className="text-xl">×</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
