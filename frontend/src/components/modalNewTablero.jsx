@@ -5,16 +5,23 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
     const LIMITE_CARACTERES = 100;
 
     const [nombreTablero,setNombreTablero] = useState("")
+    const [ipTablero, setIpTablero] = useState("");
+    const [topicoTablero, setTopicoTablero] = useState("");
+    const [protocoloTablero] = useState("ws")
 
     const handleAddTablero = async (e) =>{
       e.preventDefault();
-      const res = await crearTablero({ nombreTablero: nombreTablero.trim() });
+      const res = await crearTablero({ 
+        nombreTablero: nombreTablero.trim(),
+        ipTablero: ipTablero.trim(),
+        topicoTablero: topicoTablero.trim(),
+        protocoloTablero: protocoloTablero.trim()
+      });
 
       if (res){
         obtenerTableros();
         setModalOpen(false)
       }
-
     }
 
     return(
@@ -25,6 +32,7 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Tablero</h3>
             <form onSubmit={handleAddTablero}>
+              {/* Nombre de tablero */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Nombre de tablero</label>
                 <input
@@ -39,6 +47,56 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
                 <div className="flex justify-end mt-1">
                   <span className="text-xs text-gray-500">
                     {nombreTablero.length}/{LIMITE_CARACTERES}
+                  </span>
+                </div>
+              </div>
+              {/* Protocolo tablero */}
+              <div className="mb-4 ">
+                <label className="block text-sm font-medium mb-1">Protocolo tablero</label>
+                <input
+                  id="protocolo-tablero"
+                  type="text"
+                  className=" w-1/4 bg-gray-200 rounded px-2 py-1"
+                  value={protocoloTablero}
+                  onChange={(e) => setNombreTablero(e.target.value)}
+                  placeholder="ws por defecto"
+                  disabled
+                />
+              </div>
+              
+              {/* Ip y puerto de tablero */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Ip y puerto de tablero</label>
+                <input
+                  id="ip-tablero"
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  value={ipTablero}
+                  onChange={(e) => setIpTablero(e.target.value)}
+                  placeholder="123.456.789.123:12346"
+                />
+                <div className="flex justify-end mt-1">
+                  <span className="text-xs text-gray-500">
+                    {ipTablero.length}/{21}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Topico tablero */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Tópico de tablero</label>
+                <input
+                  id="topico-tablero"
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  value={topicoTablero}
+                  onChange={(e) => setTopicoTablero(e.target.value)}
+                  placeholder="topico/principal, principal, etc"
+                  maxLength={LIMITE_CARACTERES}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className="text-xs text-gray-500">
+                    {topicoTablero.length}/{LIMITE_CARACTERES}
                   </span>
                 </div>
               </div>
