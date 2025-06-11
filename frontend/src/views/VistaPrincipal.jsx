@@ -53,6 +53,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
   const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
+  const [formatoMensaje, setFormatoMensaje] = useState("json");
 
   // Referencias para los tableros LED
   const marqueeRef1 = useRef(null);
@@ -235,16 +236,28 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
       if (isConnected && topicCompleto) {
         const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
-        const mensajeAPublicar = {
-          texto1: lineas[0],
-          texto2: lineas[1],
-          velocidad: `x${mensajes[seleccionado].velocidad}`,
-          animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"
-        };
+        
+        let mensajeAEnviar;
+        if (formatoMensaje === "plano") {
+          // Formato de texto plano
+          mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
+          console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
+          publish(topicCompleto, mensajeAEnviar);
+        } else {
+          // Formato JSON
+          const mensajeJSON = {
+            texto1: lineas[0],
+            texto2: lineas[1],
+            velocidad: `x${mensajes[seleccionado].velocidad}`,
+            animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"
+          };
+          console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
+          publish(topicCompleto, JSON.stringify(mensajeJSON));
+          mensajeAEnviar = mensajeJSON;
+        }
 
-        publish(topicCompleto, JSON.stringify(mensajeAPublicar));
-        console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAPublicar);
-        showNotification('success', 'Mensaje enviado', 'El mensaje ha sido enviado al tablero LED');
+        console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
+        showNotification('success', 'Mensaje enviado', `El mensaje ha sido enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
       } else {
         if (!topicCompleto) {
           console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
@@ -277,16 +290,27 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       const topicCompleto = tableroInfo?.topicoTablero;
 
       if (isConnected && topicCompleto) {
-        const mensajeAPublicar = {
-          texto1: textoPersonalizado1.trim(),
-          texto2: textoPersonalizado2.trim(),
-          velocidad: velocidadPersonalizada,
-          animacion: animacionPersonalizada
-        };
+        let mensajeAEnviar;
+        if (formatoMensaje === "plano") {
+          // Formato de texto plano
+          mensajeAEnviar = `${textoPersonalizado1.trim()}|${textoPersonalizado2.trim()}|${velocidadPersonalizada}|${animacionPersonalizada}`;
+          console.log("🔄 Publicando mensaje personalizado (texto plano):", mensajeAEnviar);
+          publish(topicCompleto, mensajeAEnviar);
+        } else {
+          // Formato JSON
+          const mensajeJSON = {
+            texto1: textoPersonalizado1.trim(),
+            texto2: textoPersonalizado2.trim(),
+            velocidad: velocidadPersonalizada,
+            animacion: animacionPersonalizada
+          };
+          console.log("🔄 Publicando mensaje personalizado (JSON):", mensajeJSON);
+          publish(topicCompleto, JSON.stringify(mensajeJSON));
+          mensajeAEnviar = mensajeJSON;
+        }
 
-        publish(topicCompleto, JSON.stringify(mensajeAPublicar));
-        console.log(`✅ Mensaje personalizado publicado en tópico '${topicCompleto}':`, mensajeAPublicar);
-        showNotification('success', 'Mensaje enviado', 'Texto personalizado enviado al tablero LED');
+        console.log(`✅ Mensaje personalizado publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
+        showNotification('success', 'Mensaje enviado', `Texto personalizado enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
       } else {
         if (!topicCompleto) {
           console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
@@ -507,7 +531,42 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
           </div>
         </div>
-
+        <div className="mb-4 bg-white p-3 rounded-lg shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Formato de mensaje MQTT:
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFormatoMensaje("json")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  formatoMensaje === "json"
+                    ? 'bg-[#109d95] text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📄 JSON
+              </button>
+              <button
+                onClick={() => setFormatoMensaje("plano")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  formatoMensaje === "plano"
+                    ? 'bg-[#109d95] text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📝 Texto Plano
+              </button>
+            </div>
+            <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded border">
+              {formatoMensaje === "json" ? (
+                <span>📋 Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
+              ) : (
+                <span>📋 Formato: <code>texto1|texto2|velocidad|animacion</code></span>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="mt-2 sm:mt-3">
           <div className="flex flex-col sm:flex-row w-full gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">

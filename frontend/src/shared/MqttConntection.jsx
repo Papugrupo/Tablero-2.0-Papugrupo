@@ -196,7 +196,7 @@ export const MqttProvider = ({
   const publish = useCallback((topic, message, opts = {}) => {
     if (clientRef.current && isConnected && topic) {
       const messageToSend = typeof message === 'string' ? message : JSON.stringify(message);
-      clientRef.current.publish(topic, messageToSend, opts, (err) => {
+      clientRef.current.publish(topic, message, opts, (err) => {
         if (err) {
           console.error(`❌ Error al publicar en MQTT [${topic}]:`, err);
           setMqttError(`Error al publicar: ${err.message}`);
