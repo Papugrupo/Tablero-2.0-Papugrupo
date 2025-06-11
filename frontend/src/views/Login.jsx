@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { loginUsuario } from "../services/usuario.service";
 import './Login.css'; 
+import Loading from "../components/shared/Loading";
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -206,6 +207,7 @@ const Login = () => {
           <span className="block sm:inline text-gray-600 mt-2">Correo o Contraseña inválida. Por favor, inténtalo de nuevo.</span>
         </div>
       )}
+      <Loading isOpen={loading} />
     </div>
   );
 };

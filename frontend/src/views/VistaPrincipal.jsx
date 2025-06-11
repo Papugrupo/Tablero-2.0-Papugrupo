@@ -1,86 +1,79 @@
 import React, { useRef, useEffect, useState } from "react";
+import Cookies from 'js-cookie';
+import { jwtDecode } from 'jwt-decode';
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
-import { MqttProvider, useMqtt } from "../shared/MqttConntection"; // Import the MQTT provider
-import { obtenerMensajes, guardarMensaje, obtenerTableros } from "../services/tablero.service"; // Import the API functions
+import Loading from "../components/shared/Loading";
+import { MqttProvider, useMqtt } from "../shared/MqttConntection";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
+import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 
-// Main component with MQTT Provider wrapper
-export default function VistaPrincipal() {
+// Componente Wrapper para configurar MqttProvider dinámicamente
+function MqttConfigWrapper() {
+  const [mqttBrokerUrl, setMqttBrokerUrl] = useState(null);
+
+  const handleTableroConfigChange = (newBrokerUrl) => {
+    console.log("🔄 Cambiando configuración MQTT:", newBrokerUrl);
+    setMqttBrokerUrl(newBrokerUrl);
+  };
+
   return (
-    <MqttProvider>
-      <VistaPrincipalContent />
+    <MqttProvider initialBrokerUrl={mqttBrokerUrl}>
+      <VistaPrincipalContent onTableroConfigChange={handleTableroConfigChange} />
     </MqttProvider>
   );
 }
 
-// Content component that uses MQTT
-function VistaPrincipalContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mensajeActual, setMensajeActual] = useState(null); // null cuando no hay mensaje
-  const [mensajes, setMensajes] = useState([{
-    id: "a",
-    mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo",
-    velocidad: "3"
-  },
-  {
-    id: "b",
-    mensaje: "Segundo mensaje de prueba\nOtra línea de prueba",
-    velocidad: "3.5"
-  }]); // Array de mensajes desde API
-  const [seleccionado, setSeleccionado] = useState(null); // Para manejar selección única
+// Componente principal exportado
+export default function VistaPrincipal() {
+  return <MqttConfigWrapper />;
+}
 
-  // NUEVOS ESTADOS PARA EL MODAL
+// Componente de contenido que usa MQTT y maneja la lógica de la vista
+function VistaPrincipalContent({ onTableroConfigChange }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mensajeActual, setMensajeActual] = useState(null);
+  const [tableroInfo, setTableroInfo] = useState(null);
+  const [notification, setNotification] = useState({
+    show: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+  const [usuario, setUsuario] = useState({ nombre: "", apellido: "" });
+  const [mensajes, setMensajes] = useState([]);
+  const [seleccionado, setSeleccionado] = useState(null);
+
+  // Estados para modales
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTableroOpen, setModalTableroOpen] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
-  const [nuevoTablero, setNuevoTablero] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
+  const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
+  const [formatoMensaje, setFormatoMensaje] = useState("json");
 
-  // Referencias para los dos tableros LED
+  // Referencias para los tableros LED
   const marqueeRef1 = useRef(null);
   const marqueeRef2 = useRef(null);
   const [duration, setDuration] = useState(null);
-  const [cargando, setCargando] = useState(true); // Estado para mostrar carga
-  const [error, setError] = useState(null); // Estado para manejar errores
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState(null);
 
-  // ID del tablero (deberías obtenerlo de props o contexto)
-  const [idTableros, setIdTableros] = useState([]); // Estado para manejar los tableros
+  // Estados para tableros
+  const [idTableros, setIdTableros] = useState([]);
   const [tableroSeleccionado, setTableroSeleccionado] = useState("");
 
-  const obtenerIdTableros = async () => {
-    try {
-      const data = await obtenerTableros(); // Llama a la función para obtener los tableros
-      console.log("ID de tableros obtenidos:", data);
-      setIdTableros(data); // Actualiza el estado con los ID de los tableros
-
-    } catch (err) {
-      console.error("Error al obtener ID de tableros:", err);
-      setError("No se pudieron cargar los ID de tableros.");
-    }
-  };
-
-  const handleNuevoTablero = () => {
-    setModalTableroOpen(true);
-  }
-
-  useEffect(() => {
-    obtenerIdTableros();
-  }, []); // Llama a la función al cargar el componente
-
-  // Estados para mensaje personalizado
+  // Estados para texto personalizado
   const [textoPersonalizado1, setTextoPersonalizado1] = useState("");
   const [textoPersonalizado2, setTextoPersonalizado2] = useState("");
-  // Nuevos estados para el texto que se mostrará (solo cambia al presionar el botón)
   const [textoMostrado1, setTextoMostrado1] = useState("");
   const [textoMostrado2, setTextoMostrado2] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
-
   const [animacionPersonalizada, setAnimacionPersonalizada] = useState("PA_SCROLL_LEFT");
-  const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
   const [animacionActual, setAnimacionActual] = useState("PA_SCROLL_LEFT");
 
   const ANIMACIONES = [
@@ -95,35 +88,124 @@ function VistaPrincipalContent() {
     { valor: "PA_NO_EFFECT", nombre: "Sin efecto" },
   ];
 
-  // Límite de caracteres para MQTT
-  const LIMITE_CARACTERES = 100; // Por línea
+  const LIMITE_CARACTERES = 100;
 
-  // Use MQTT context
   const { isConnected, mqttError, publish, reconnect, reconnectAttempts, connecting } = useMqtt();
 
-  // Cargar mensajes al iniciar el componente
+  const showNotification = (type, title, message, duration = 3000) => {
+    setNotification({ show: true, type, title, message });
+    setTimeout(() => setNotification(prev => ({ ...prev, show: false })), duration);
+  };
+
+  const obtenerDatosUsuarioDesdeToken = async () => {
+    setCargando(true);
+    try {
+      const token = Cookies.get('token');
+      if (token) {
+        const decodedToken = jwtDecode(token);
+        if (decodedToken.idUsuario) {
+          try {
+            const usuarioCompleto = await obtenerUsuario(decodedToken.idUsuario);
+            if (usuarioCompleto) {
+              setUsuario({
+                nombre: usuarioCompleto.nombre || decodedToken.nombre || "Usuario",
+                apellido: usuarioCompleto.apellido || decodedToken.apellido || ""
+              });
+              return;
+            }
+          } catch (apiError) {
+            console.error("Error al obtener datos de usuario desde API:", apiError);
+          }
+        }
+        setUsuario({
+          nombre: decodedToken.nombre || "Usuario",
+          apellido: decodedToken.apellido || ""
+        });
+      } else {
+        setUsuario({ nombre: "Invitado", apellido: "" });
+      }
+    } catch (error) {
+      console.error("Error al decodificar token:", error);
+      setUsuario({ nombre: "Usuario", apellido: "" });
+    } finally {
+      setCargando(false);
+    }
+  };
+
   useEffect(() => {
-    const cargarMensajes = async () => {
+    obtenerDatosUsuarioDesdeToken();
+  }, []);
+
+  const obtenerIdTableros = async () => {
+    setCargando(true);
+    try {
+      const data = await obtenerTableros();
+      setIdTableros(data);
+    } catch (err) {
+      console.error("Error al obtener ID de tableros:", err);
+      setError("No se pudieron cargar los ID de tableros.");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleNuevoTablero = () => {
+    setModalTableroOpen(true);
+  };
+
+  useEffect(() => {
+    obtenerIdTableros();
+  }, []);
+
+  // Efecto para cargar datos del tablero y gestionar MQTT cuando cambia tableroSeleccionado
+  useEffect(() => {
+    const cargarDataTablero = async () => {
+      if (!tableroSeleccionado) {
+        setMensajes([]);
+        setTableroInfo(null);
+        setMensajeActual(null);
+        // Desconectar MQTT si no hay tablero seleccionado
+        onTableroConfigChange(null);
+        return;
+      }
+
+      setCargando(true);
+      setError(null);
       try {
-        setCargando(true);
+        // Cargar información del tablero
+        const info = await obtenerInfoTablero(tableroSeleccionado);
+        setTableroInfo(info);
+
+        // Cargar mensajes del tablero
         const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
         setMensajes(mensajesObtenidos);
-        setError(null);
+
+        // Configurar conexión MQTT con los datos del tablero
+        if (info && info.ipTablero && info.protocoloTablero) {
+          const brokerUrl = `${info.protocoloTablero}://${info.ipTablero}`;
+          console.log("🔗 Configurando MQTT para tablero:", {
+            broker: brokerUrl,
+            topico: info.topicoTablero
+          });
+          onTableroConfigChange(brokerUrl);
+        } else {
+          console.warn("⚠️ Información de conexión incompleta para el tablero");
+          onTableroConfigChange(null);
+        }
+
       } catch (err) {
-        console.error('Error al cargar mensajes:', err);
-        setError('No se pudieron cargar los mensajes guardados');
-        // Si hay error, usar mensajes predeterminados para no romper la funcionalidad
-        setMensajes([
-          { mensaje: "Primer mensaje de ejemplo\nSegunda línea ejemplo", velocidad: "3" },
-          { mensaje: "Segundo mensaje de prueba\nOtra línea de prueba", velocidad: "3.5" },
-        ]);
+        console.error('Error al cargar datos del tablero:', err);
+        setError(`No se pudieron cargar datos para el tablero: ${err.message}`);
+        setMensajes([]);
+        setTableroInfo(null);
+        onTableroConfigChange(null);
       } finally {
         setCargando(false);
       }
     };
 
-    cargarMensajes();
-  }, [tableroSeleccionado]);
+    cargarDataTablero();
+  }, [tableroSeleccionado]); // SOLO tableroSeleccionado como dependencia
 
   // Función para separar las líneas del mensaje
   const obtenerLineasDeMensaje = (mensaje) => {
@@ -135,7 +217,7 @@ function VistaPrincipalContent() {
   // Obtener las líneas del mensaje actual
   const [mensajeTexto1, mensajeTexto2] = mensajeActual !== null
     ? mensajeActual === "personalizado"
-      ? [textoMostrado1, textoMostrado2] // Usamos textoMostrado en lugar de textoPersonalizado
+      ? [textoMostrado1, textoMostrado2]
       : obtenerLineasDeMensaje(mensajes[mensajeActual]?.mensaje || "")
     : ["", ""];
 
@@ -148,72 +230,121 @@ function VistaPrincipalContent() {
     if (seleccionado !== null && mensajes[seleccionado]) {
       setMensajeActual(seleccionado);
       setAnimacionActual(mensajes[seleccionado].animacion || "PA_SCROLL_LEFT");
-      // Publicar mensaje en MQTT cuando se actualiza
-      if (isConnected) {
-        const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
-        const mensajeAPublicar = {
-          texto1: lineas[0],
-          texto2: lineas[1],
-          velocidad: `x${mensajes[seleccionado].velocidad}`, // Formato x1, x2, etc.
-          animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT" // Usar animación guardada o la predeterminada
-        };
 
-        // Publicar en el tópico "mensaje/actualizar"
-        publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
-        console.log(`✅ Mensaje publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
+      // Obtener el tópico del tablero actual
+      const topicCompleto = tableroInfo?.topicoTablero;
+
+      if (isConnected && topicCompleto) {
+        const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
+        
+        let mensajeAEnviar;
+        if (formatoMensaje === "plano") {
+          // Formato de texto plano
+          mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
+          console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
+          publish(topicCompleto, mensajeAEnviar);
+        } else {
+          // Formato JSON
+          const mensajeJSON = {
+            texto1: lineas[0],
+            texto2: lineas[1],
+            velocidad: `x${mensajes[seleccionado].velocidad}`,
+            animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"
+          };
+          console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
+          publish(topicCompleto, JSON.stringify(mensajeJSON));
+          mensajeAEnviar = mensajeJSON;
+        }
+
+        console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
+        showNotification('success', 'Mensaje enviado', `El mensaje ha sido enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
       } else {
-        console.warn('❌ No se pudo publicar el mensaje: No hay conexión MQTT');
+        if (!topicCompleto) {
+          console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
+        }
+        if (!isConnected) {
+          console.warn('⚠️ No se pudo publicar: No hay conexión MQTT.');
+        }
+        showNotification('warning', 'Error de envío', 'No se pudo enviar el mensaje. Verifique la conexión y configuración del tablero.');
       }
 
-      setSeleccionado(null); // Limpiar selección
-      setModoPersonalizado(false); // Salir del modo personalizado
+      setSeleccionado(null);
+      setModoPersonalizado(false);
     }
   };
 
   // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
     if (textoPersonalizado1.trim() !== "" || textoPersonalizado2.trim() !== "") {
-      // Verificar que no exceda el límite de caracteres
       if (textoPersonalizado1.length > LIMITE_CARACTERES || textoPersonalizado2.length > LIMITE_CARACTERES) {
-        alert(`El mensaje excede el límite de ${LIMITE_CARACTERES} caracteres por línea permitidos para MQTT.`);
+        showNotification('warning', 'Límite excedido', `Máximo ${LIMITE_CARACTERES} caracteres por línea.`);
         return;
       }
 
-      // Actualizar los textos que se mostrarán
       setTextoMostrado1(textoPersonalizado1.trim());
       setTextoMostrado2(textoPersonalizado2.trim());
-
-      // Actualizar el estado para mostrar el mensaje personalizado
       setMensajeActual("personalizado");
-
       setAnimacionActual(animacionPersonalizada);
 
-      // Publicar mensaje personalizado en MQTT
-      if (isConnected) {
-        // MODIFICACIÓN: Enviar texto1 y texto2 como propiedades separadas
-        const mensajeAPublicar = {
-          texto1: textoPersonalizado1.trim(),
-          texto2: textoPersonalizado2.trim(),
-          velocidad: velocidadPersonalizada,
-          animacion: animacionPersonalizada
-        };
+      // Obtener el tópico del tablero actual
+      const topicCompleto = tableroInfo?.topicoTablero;
 
-        try {
-          const mensajeJSON = JSON.stringify(mensajeAPublicar);
-          console.log(`📊 Tamaño del mensaje MQTT: ${mensajeJSON.length} bytes`);
-
-          publish('mensaje/actualizar', mensajeJSON);
-          console.log(`✅ Mensaje personalizado publicado en tópico 'mensaje/actualizar':`, mensajeAPublicar);
-        } catch (error) {
-          console.error(`❌ Error al publicar mensaje: ${error.message}`);
-          alert(`Error al enviar mensaje: ${error.message}`);
+      if (isConnected && topicCompleto) {
+        let mensajeAEnviar;
+        if (formatoMensaje === "plano") {
+          // Formato de texto plano
+          mensajeAEnviar = `${textoPersonalizado1.trim()}|${textoPersonalizado2.trim()}|${velocidadPersonalizada}|${animacionPersonalizada}`;
+          console.log("🔄 Publicando mensaje personalizado (texto plano):", mensajeAEnviar);
+          publish(topicCompleto, mensajeAEnviar);
+        } else {
+          // Formato JSON
+          const mensajeJSON = {
+            texto1: textoPersonalizado1.trim(),
+            texto2: textoPersonalizado2.trim(),
+            velocidad: velocidadPersonalizada,
+            animacion: animacionPersonalizada
+          };
+          console.log("🔄 Publicando mensaje personalizado (JSON):", mensajeJSON);
+          publish(topicCompleto, JSON.stringify(mensajeJSON));
+          mensajeAEnviar = mensajeJSON;
         }
+
+        console.log(`✅ Mensaje personalizado publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
+        showNotification('success', 'Mensaje enviado', `Texto personalizado enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
       } else {
-        console.warn('❌ No se pudo publicar el mensaje personalizado: No hay conexión MQTT');
-        alert('No hay conexión MQTT. Revisa la conexión e intenta de nuevo.');
+        if (!topicCompleto) {
+          console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
+        }
+        if (!isConnected) {
+          console.warn('⚠️ No se pudo publicar: No hay conexión MQTT.');
+        }
+        showNotification('warning', 'Error de envío', 'No se pudo enviar el mensaje. Verifique la conexión y configuración del tablero.');
       }
 
-      setSeleccionado(null); // Limpiar selección
+      setSeleccionado(null);
+    }
+  };
+
+  // Función para limpiar el tablero
+  const limpiarTablero = () => {
+    setMensajeActual(null);
+    setSeleccionado(null);
+
+    // Obtener el tópico del tablero actual
+    const topicCompleto = tableroInfo?.topicoTablero;
+
+    if (isConnected && topicCompleto) {
+      publish(topicCompleto, JSON.stringify({ comando: 'limpiar' }));
+      console.log(`✅ Comando de limpieza publicado en tópico '${topicCompleto}'`);
+      showNotification('success', 'Tablero limpiado', 'Orden de limpieza enviada al tablero LED');
+    } else {
+      if (!topicCompleto) {
+        console.warn('⚠️ No se pudo limpiar: Tópico del tablero no definido.');
+      }
+      if (!isConnected) {
+        console.warn('⚠️ No se pudo limpiar: No hay conexión MQTT.');
+      }
+      showNotification('warning', 'Error de limpieza', 'No se pudo limpiar el tablero. Verifique la conexión y configuración.');
     }
   };
 
@@ -232,32 +363,15 @@ function VistaPrincipalContent() {
     }
   };
 
-  // Función para limpiar el tablero
-  const limpiarTablero = () => {
-    setMensajeActual(null);
-    setSeleccionado(null);
-
-    // Publicar mensaje de limpieza en MQTT
-    if (isConnected) {
-      publish('mensaje/actualizar', JSON.stringify({ comando: 'limpiar' }));
-      console.log('✅ Comando de limpieza publicado en MQTT');
-    } else {
-      console.warn('❌ No se pudo publicar el comando de limpieza: No hay conexión MQTT');
-    }
-  };
-
-  // Función para manejar selección única
   const seleccionarMensaje = (index) => {
     setSeleccionado(seleccionado === index ? null : index);
   };
 
-  // Función para alternar entre modo personalizado y predefinido
   const toggleModoPersonalizado = () => {
     setModoPersonalizado(!modoPersonalizado);
-    setSeleccionado(null); // Limpiar selección cuando cambiamos de modo
+    setSeleccionado(null);
   };
 
-  // Función para mostrar el contenido de un mensaje en la tabla
   const mostrarContenidoMensaje = (mensaje) => {
     if (!mensaje) return "Sin contenido";
     const lineas = obtenerLineasDeMensaje(mensaje);
@@ -269,130 +383,94 @@ function VistaPrincipalContent() {
     );
   };
 
-  // NUEVA FUNCIÓN: Manejo para enviar el nuevo mensaje
   const enviarNuevoMensaje = async (e) => {
     e.preventDefault();
-    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return; // Al menos una línea debe tener contenido
+    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return;
 
-    // Si se ingresó velocidad, debe ser un número entero o float
-    const velocidadInput = nuevaVelocidad.trim();
-    const regex = /^[0-9]+(\.[0-9]+)?$/;
-    if (velocidadInput !== "" && !regex.test(velocidadInput)) {
-      alert("La velocidad debe ser numérica, por ejemplo: 2 o 2.5");
+    if (!tableroSeleccionado) {
+      showNotification('warning', 'Seleccione un tablero', 'Debe seleccionar un tablero antes de guardar un mensaje.');
       return;
     }
 
-    // Si se ingresa velocidad, se le antepone la "x", caso contrario se usa "x1"
-    // Para el endpoint extraemos el número
+    const velocidadInput = nuevaVelocidad.trim();
+    const regex = /^[0-9]+(\.[0-9]+)?$/;
+    if (velocidadInput !== "" && !regex.test(velocidadInput)) {
+      showNotification('error', 'Formato incorrecto', 'La velocidad debe ser numérica, por ejemplo: 2 o 2.5');
+      return;
+    }
+
     const velocidadFinal = velocidadInput === "" ? 1 : parseFloat(velocidadInput);
+    setCargando(true);
 
     try {
-      // Crear el mensaje con formato texto1\ntexto2
       const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`;
 
-      // Llama al endpoint para guardar el mensaje
-      const respuesta = await guardarMensaje({
-        idTableroRef: tableroSeleccionado, // idTablero definido en el componente
-        mensaje: mensajeCompleto, // Aquí ya está en formato texto1\ntexto2
+      await guardarMensaje({
+        idTableroRef: tableroSeleccionado,
+        mensaje: mensajeCompleto,
         velocidad: velocidadFinal,
-        animacion: nuevaAnimacion // Guardar la animación seleccionada
+        animacion: nuevaAnimacion
       });
 
-      // Actualiza la lista de mensajes
-      setMensajes([...mensajes, {
-        mensaje: mensajeCompleto, // Guardar en formato texto1\ntexto2
-        velocidad: velocidadFinal,
-        animacion: nuevaAnimacion // Añadir animación al mensaje local
-      }]);
+      // Recargar mensajes del tablero
+      const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
+      setMensajes(mensajesObtenidos);
+
       setNuevoTexto1("");
       setNuevoTexto2("");
       setNuevaVelocidad("");
-      setNuevaAnimacion("PA_SCROLL_LEFT"); // Resetear a la animación predeterminada
+      setNuevaAnimacion("PA_SCROLL_LEFT");
       setModalOpen(false);
-    } catch {
-      alert("Error al guardar el mensaje. Revisa la consola para más información.");
+
+      showNotification('success', 'Mensaje guardado', 'El mensaje ha sido guardado exitosamente.');
+    } catch (error) {
+      console.error("Error al guardar mensaje:", error);
+      showNotification('error', 'Error al guardar', 'No se pudo guardar el mensaje.');
+    } finally {
+      setCargando(false);
     }
   };
 
-  // Efecto para calcular la duración de la animación
+  // Efecto para calcular duración de animación
   useEffect(() => {
     const calcularDuracion = () => {
       const el1 = marqueeRef1.current;
       const el2 = marqueeRef2.current;
 
       if ((el1 || el2) && mensajeActual !== null) {
-        // Calculamos el ancho máximo entre ambos textos
         const textWidth1 = el1 ? el1.scrollWidth : 0;
         const textWidth2 = el2 ? el2.scrollWidth : 0;
         const textWidth = Math.max(textWidth1, textWidth2);
-
-        // Usamos el ancho del primer contenedor como referencia
-        const containerWidth = el1 ? el1.parentElement.offsetWidth :
-          el2 ? el2.parentElement.offsetWidth : 0;
-
+        const containerWidth = el1 ? el1.parentElement.offsetWidth : el2 ? el2.parentElement.offsetWidth : 0;
         const factorVelocidad = parseFloat(mensajeVelocidad.replace("x", "")) || 1;
 
-        // Duración base según el tipo de animación
         let duracionBase;
-
         if (["PA_SCROLL_LEFT", "PA_SCROLL_RIGHT"].includes(animacionActual)) {
-          // Para desplazamiento horizontal, basado en el ancho del texto
           const distanciaTotal = textWidth + containerWidth;
           duracionBase = (distanciaTotal / 100);
-        }
-        else if (["PA_SCROLL_UP", "PA_SCROLL_DOWN"].includes(animacionActual)) {
-          // Para desplazamiento vertical
+        } else if (["PA_SCROLL_UP", "PA_SCROLL_DOWN"].includes(animacionActual)) {
           duracionBase = 1;
-        }
-        else if (["PA_WIPE"].includes(animacionActual)) {
-          // Para efectos basados en caracteres
-          const charCount = Math.max(
-            mensajeTexto1 ? mensajeTexto1.length : 0,
-            mensajeTexto2 ? mensajeTexto2.length : 0
-          );
+        } else if (["PA_WIPE"].includes(animacionActual)) {
+          const charCount = Math.max(mensajeTexto1 ? mensajeTexto1.length : 0, mensajeTexto2 ? mensajeTexto2.length : 0);
           duracionBase = Math.max(2, charCount * 0.1);
-        }
-        else if (["PA_NO_EFFECT"].includes(animacionActual)) {
-          // Sin efecto
+        } else if (["PA_NO_EFFECT"].includes(animacionActual)) {
           duracionBase = 0.5;
-        }
-        else {
-          // Para el resto de animaciones (fade, random, etc.)
+        } else {
           duracionBase = 3;
         }
 
-        // Aplicamos el factor de velocidad de manera uniforme
         const duracionFinal = duracionBase / factorVelocidad;
-
-        // Aseguramos que la duración tenga sentido
         const duracionAjustada = Math.max(0.5, Math.min(duracionFinal, 15));
-
         setDuration(duracionAjustada);
 
-        // Para la animación aleatoria, seleccionamos una sola vez para ambos elementos
-        let animacionAleatoria = null;
-
-        if (animacionActual === "PA_RANDOM") {
-          // Seleccionar una animación aleatoria de las disponibles
-          const randomAnimations = ["marqueee-left", "marqueee-right", "marqueee-up", "marqueee-down", "marqueee-wipe", "marqueee-closing", "marqueee-opening", "marqueee-fade"];
-          const randomIndex = Math.floor(Math.random() * randomAnimations.length);
-          animacionAleatoria = randomAnimations[randomIndex];
-          console.log("Animación aleatoria seleccionada:", animacionAleatoria);
-        }
-
-        // Forzar reinicio de la animación para aplicar cambios
         const reiniciarAnimacion = (el) => {
           if (el) {
             el.style.animation = 'none';
-            void el.offsetHeight; // Trigger reflow
-
-
+            void el.offsetHeight;
             const animClass = obtenerClaseAnimacion(animacionActual);
             const infiniteStr = ["PA_NO_EFFECT"].includes(animacionActual) ? '' : 'infinite';
-
             el.className = `marqueee-text ${el === marqueeRef2.current ? "marqueee-text-second" : ""} ${animClass}`;
             el.style.animation = `${animClass} ${duracionAjustada}s linear ${infiniteStr}`;
-
           }
         };
 
@@ -401,32 +479,23 @@ function VistaPrincipalContent() {
       }
     };
 
-    // Ejecutar inicialmente y al cambiar tamaño
     calcularDuracion();
     const debouncedResize = debounce(calcularDuracion, 100);
     window.addEventListener('resize', debouncedResize);
-
-    return () => {
-      window.removeEventListener('resize', debouncedResize);
-    };
+    return () => window.removeEventListener('resize', debouncedResize);
   }, [mensajeTexto1, mensajeTexto2, mensajeVelocidad, mensajeActual, animacionActual]);
 
-  // Función debounce para optimizar
   function debounce(func, wait) {
     let timeout;
-    return function () {
+    return function (...args) {
+      const context = this;
       clearTimeout(timeout);
-      timeout = setTimeout(func, wait);
+      timeout = setTimeout(() => func.apply(context, args), wait);
     };
   }
 
-  // Opciones de velocidad predefinidas
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
-
-  const handleModalOpen = () => {
-
-    setModalOpen(true)
-  }
+  const handleModalOpen = () => setModalOpen(true);
 
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
@@ -443,80 +512,141 @@ function VistaPrincipalContent() {
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Bienvenido Profesor</h1>
-            <span className="font-normal">Rodrigo Domínguez</span>
+            <h1 className="text-xl sm:text-2xl font-bold">Bienvenido</h1>
+            <span className="font-normal text-lg sm:text-xl">{usuario.nombre} {usuario.apellido}</span>
           </div>
 
           <div className="flex items-center mt-2 sm:mt-0 space-x-2">
             <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-sm">{isConnected ? 'Conectado a MQTT' : 'Desconectado'}</span>
+            <span className="text-sm">{isConnected ? 'Conectado a MQTT' : connecting ? 'Conectando...' : 'Desconectado'}</span>
             {!isConnected && !connecting && (
               <button
                 onClick={reconnect}
                 disabled={connecting}
                 className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
               >
-                {connecting ? 'Conectando...' : `Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
+                {`Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
               </button>
             )}
             {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
-
           </div>
-
         </div>
-        <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
-          <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700">
-            Tablero actual:
-          </label>
-          <div className="relative w-full sm:w-auto">
-            <select
-              id="tablero-selector"
-              className="w-full sm:w-64 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
-              value={tableroSeleccionado}
-              onChange={(e) => {
-                setTableroSeleccionado(e.target.value);
-                // Cargar mensajes del nuevo tablero seleccionado
-                const cargarMensajesDelTablero = async () => {
-                  try {
-                    setCargando(true);
-                    const mensajesObtenidos = await obtenerMensajes(e.target.value);
-                    setMensajes(mensajesObtenidos);
-                    setError(null);
-                  } catch (err) {
-                    console.error('Error al cargar mensajes del tablero:', err);
-                    setError('No se pudieron cargar los mensajes del tablero seleccionado');
-                    setMensajes([]);
-                  } finally {
-                    setCargando(false);
-                  }
-                };
-                cargarMensajesDelTablero();
-              }}
-            >
-              <option value="" disabled={tableroSeleccionado !== ""}>
-                Seleccione un tablero
-              </option>
-              {idTableros.length === 0 ? (
-                <option value="" disabled>No hay tableros disponibles</option>
+        <div className="mb-4 bg-white p-3 rounded-lg shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Formato de mensaje MQTT:
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFormatoMensaje("json")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  formatoMensaje === "json"
+                    ? 'bg-[#109d95] text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📄 JSON
+              </button>
+              <button
+                onClick={() => setFormatoMensaje("plano")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  formatoMensaje === "plano"
+                    ? 'bg-[#109d95] text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📝 Texto Plano
+              </button>
+            </div>
+            <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded border">
+              {formatoMensaje === "json" ? (
+                <span>Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
               ) : (
-                idTableros.map((tablero) => (
-                  <option key={tablero.idTablero} value={tablero.idTablero}>
-                    {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
-                  </option>
-                ))
+                <span>Formato: <code>texto1|texto2|velocidad|animacion</code></span>
               )}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" />
-
             </div>
           </div>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
+        <div className="mt-2 sm:mt-3">
+          <div className="flex flex-col sm:flex-row w-full gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Tablero actual:
+              </label>
+              <div className="relative w-full sm:w-64">
+                <select
+                  id="tablero-selector"
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
+                  value={tableroSeleccionado}
+                  onChange={(e) => setTableroSeleccionado(e.target.value)}
+                >
+                  <option value="" disabled={!!tableroSeleccionado}>
+                    Seleccione un tablero
+                  </option>
+                  {idTableros.length === 0 && !cargando ? (
+                    <option value="" disabled>No hay tableros disponibles</option>
+                  ) : (
+                    idTableros.map((tablero) => (
+                      <option key={tablero.idTablero} value={tablero.idTablero}>
+                        {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
 
-        {/* Contenedor principal para los dos tableros LED */}
+            {tableroInfo && tableroSeleccionado && (
+              <div className="flex-1 bg-white rounded-lg shadow-md p-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
+                    <p className="text-xs text-gray-500">
+                      Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                      {tableroInfo.Mensajes?.length || 0} mensajes guardados
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ID: {tableroInfo.idTablero.substring(0, 8)}...
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                  <div className="mt-1 grid grid-cols-1 gap-1">
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">IP:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">Protocolo:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
+                        <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
         <div className="led-display-container">
-          {/* Primer tablero LED (línea superior) */}
           <div className="marqueee-container mb-2">
             {mensajeActual !== null ? (
               <div
@@ -525,7 +655,7 @@ function VistaPrincipalContent() {
                 style={{
                   animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
                   minWidth: 'fit-content',
-                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' // Texto más pequeño en móviles
+                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
                 }}
               >
                 {mensajeTexto1}
@@ -534,8 +664,6 @@ function VistaPrincipalContent() {
               <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
             )}
           </div>
-
-          {/* Segundo tablero LED (línea inferior) */}
           <div className="marqueee-container">
             {mensajeActual !== null && mensajeTexto2 ? (
               <div
@@ -544,7 +672,7 @@ function VistaPrincipalContent() {
                 style={{
                   animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
                   minWidth: 'fit-content',
-                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' // Texto más pequeño en móviles
+                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
                 }}
               >
                 {mensajeTexto2}
@@ -557,15 +685,13 @@ function VistaPrincipalContent() {
 
         <div className="flex w-full justify-end items-center mt-4">
           <button
-            className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 ' : ''
-              }`}
+            className={`bg-[#9d101a] hover:bg-[#800b13] cursor-pointer text-white font-bold py-2 px-4 rounded-full shadow-md`}
             onClick={handleNuevoTablero}
           >
             CREAR NUEVO TABLERO
           </button>
         </div>
 
-        {/* Sección de entrada de texto personalizado */}
         <div className="mt-6 sm:mt-8 bg-white p-3 sm:p-4 rounded-lg shadow-md">
           <div className="flex flex-col sm:flex-row sm:items-center mb-4">
             <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
@@ -579,97 +705,56 @@ function VistaPrincipalContent() {
               {modoPersonalizado ? 'Activado' : 'Desactivado'}
             </button>
           </div>
-
           {modoPersonalizado && (
             <div className="space-y-4">
-              {/* Primera línea de texto */}
               <div>
-                <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
-                  Línea 1:
-                </label>
+                <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">Línea 1:</label>
                 <input
                   type="text"
                   id="textoPersonalizado1"
                   value={textoPersonalizado1}
-                  onChange={(e) => {
-                    if (e.target.value.length <= LIMITE_CARACTERES) {
-                      setTextoPersonalizado1(e.target.value);
-                    }
-                  }}
+                  onChange={(e) => { if (e.target.value.length <= LIMITE_CARACTERES) setTextoPersonalizado1(e.target.value);}}
                   maxLength={LIMITE_CARACTERES}
                   placeholder="Escribe la primera línea aquí..."
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
                 />
                 <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                  <span className="text-gray-500">
-                    Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}
-                  </span>
-                  {textoPersonalizado1.length >= LIMITE_CARACTERES && (
-                    <span className="text-red-500">Límite alcanzado</span>
-                  )}
+                  <span className="text-gray-500">Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}</span>
+                  {textoPersonalizado1.length >= LIMITE_CARACTERES && (<span className="text-red-500">Límite alcanzado</span>)}
                 </div>
-                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
-                  Línea 2:
-                </label>
+                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-2">Línea 2:</label>
                 <input
                   type="text"
                   id="textoPersonalizado2"
                   value={textoPersonalizado2}
-                  onChange={(e) => {
-                    if (e.target.value.length <= LIMITE_CARACTERES) {
-                      setTextoPersonalizado2(e.target.value);
-                    }
-                  }}
+                  onChange={(e) => { if (e.target.value.length <= LIMITE_CARACTERES) setTextoPersonalizado2(e.target.value);}}
                   maxLength={LIMITE_CARACTERES}
                   placeholder="Escribe la segunda línea aquí (opcional)..."
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
                 />
                 <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                  <span className="text-gray-500">
-                    Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}
-                  </span>
-                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (
-                    <span className="text-red-500">Límite alcanzado</span>
-                  )}
+                  <span className="text-gray-500">Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}</span>
+                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (<span className="text-red-500">Límite alcanzado</span>)}
                 </div>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                    Velocidad:
-                  </label>
-                  <select
-                    id="velocidadPersonalizada"
-                    value={velocidadPersonalizada}
-                    onChange={(e) => setVelocidadPersonalizada(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                  >
-                    {opcionesVelocidad.map(opcion => (
-                      <option key={opcion} value={opcion}>{opcion}</option>
-                    ))}
+                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">Velocidad:</label>
+                  <select id="velocidadPersonalizada" value={velocidadPersonalizada} onChange={(e) => setVelocidadPersonalizada(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]">
+                    {opcionesVelocidad.map(opcion => (<option key={opcion} value={opcion}>{opcion}</option>))}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                    Animación:
-                  </label>
-                  <select
-                    id="animacionPersonalizada"
-                    value={animacionPersonalizada}
-                    onChange={(e) => setAnimacionPersonalizada(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                  >
-                    {ANIMACIONES.map(anim => (
-                      <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
-                    ))}
+                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">Animación:</label>
+                  <select id="animacionPersonalizada" value={animacionPersonalizada} onChange={(e) => setAnimacionPersonalizada(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]">
+                    {ANIMACIONES.map(anim => (<option key={anim.valor} value={anim.valor}>{anim.nombre}</option>))}
                   </select>
                 </div>
               </div>
               <button
                 onClick={actualizarMensajePersonalizado}
-                disabled={textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === ""}
-                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "" ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={(textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") || !isConnected}
+                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") || !isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 ACTUALIZAR CON TEXTO PERSONALIZADO
               </button>
@@ -679,37 +764,28 @@ function VistaPrincipalContent() {
 
         <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 gap-3 sm:gap-4">
           <button
-            className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md ${seleccionado === null ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md ${(seleccionado === null || !isConnected) ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={actualizarMensaje}
-            disabled={seleccionado === null}
+            disabled={seleccionado === null || !isConnected}
           >
             ACTUALIZAR MENSAJE
           </button>
           <button
-            className={`bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md ${mensajeActual === null ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`bg-[#9d101a] hover:bg-[#800b13] text-white font-bold py-2 px-4 rounded-full shadow-md ${(mensajeActual === null || !isConnected) ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={limpiarTablero}
-            disabled={mensajeActual === null}
+            disabled={mensajeActual === null || !isConnected}
           >
             LIMPIAR TABLERO
           </button>
-
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
-
-        {/* Estado de carga */}
-        {cargando ? (
-          <div className="text-center py-4 bg-white rounded-lg shadow-md">
-            <p className="text-gray-600">Cargando mensajes guardados...</p>
-          </div>
+        {cargando && !error && mensajes.length === 0 ? (
+          <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">Cargando mensajes...</p></div>
         ) : error ? (
-          <div className="text-center py-4 bg-white rounded-lg shadow-md">
-            <p className="text-red-500">{error}</p>
-          </div>
+          <div className="text-center py-4 bg-red-100 border border-red-400 text-red-700 rounded-lg shadow-md"><p>{error}</p></div>
         ) : mensajes.length === 0 ? (
-          <div className="text-center py-4 bg-white rounded-lg shadow-md">
-            <p className="text-gray-600">No hay mensajes guardados</p>
-          </div>
+          <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">No hay mensajes guardados para este tablero.</p></div>
         ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow-md">
             <table className="w-full text-left">
@@ -725,21 +801,17 @@ function VistaPrincipalContent() {
               <tbody>
                 {mensajes.map((msg, idx) => (
                   <tr
-                    key={idx}
-                    className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''
-                      }`}
+                    key={msg.idMensaje || idx}
+                    className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''}`}
                     onClick={() => seleccionarMensaje(idx)}
                   >
                     <td className="py-2 px-2 sm:px-4 text-center">
-                      <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'
-                        }`} />
+                      <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'}`} />
                     </td>
                     <td className="px-2 sm:px-4 text-xs sm:text-sm">{msg.Usuario?.nombre || "Desconocido"}</td>
                     <td className="px-2 sm:px-4 text-xs sm:text-sm">{mostrarContenidoMensaje(msg.mensaje)}</td>
                     <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">x{msg.velocidad}</td>
-                    <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">
-                      {ANIMACIONES.find(anim => anim.valor === msg.animacion)?.nombre || "Desplazamiento a la izquierda"}
-                    </td>
+                    <td className="px-2 sm:px-4 text-center text-xs sm:text-sm">{ANIMACIONES.find(anim => anim.valor === msg.animacion)?.nombre || "Desplazamiento"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -757,107 +829,60 @@ function VistaPrincipalContent() {
         </div>
       </main>
 
-      {/* Modal para agregar nuevo mensaje con dos líneas */}
       {modalOpen && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 px-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
-        >
+        <div className="fixed inset-0 flex items-center justify-center z-50 px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)" }}>
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Mensaje</h3>
             <form onSubmit={enviarNuevoMensaje}>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
-                <input
-                  id="mensaje-texto1"
-                  type="text"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevoTexto1}
-                  onChange={(e) => setNuevoTexto1(e.target.value)}
-                  placeholder="Primera línea de texto"
-                  maxLength={LIMITE_CARACTERES}
-                />
-                <div className="flex justify-end mt-1">
-                  <span className="text-xs text-gray-500">
-                    {nuevoTexto1.length}/{LIMITE_CARACTERES}
-                  </span>
-                </div>
+                <input id="mensaje-texto1" type="text" className="w-full border rounded px-2 py-1" value={nuevoTexto1} onChange={(e) => setNuevoTexto1(e.target.value)} placeholder="Primera línea de texto" maxLength={LIMITE_CARACTERES}/>
+                <div className="flex justify-end mt-1"><span className="text-xs text-gray-500">{nuevoTexto1.length}/{LIMITE_CARACTERES}</span></div>
               </div>
-
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
-                <input
-                  id="mensaje-texto2"
-                  type="text"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevoTexto2}
-                  onChange={(e) => setNuevoTexto2(e.target.value)}
-                  placeholder="Segunda línea de texto"
-                  maxLength={LIMITE_CARACTERES}
-                />
-                <div className="flex justify-end mt-1">
-                  <span className="text-xs text-gray-500">
-                    {nuevoTexto2.length}/{LIMITE_CARACTERES}
-                  </span>
-                </div>
+                <input id="mensaje-texto2" type="text" className="w-full border rounded px-2 py-1" value={nuevoTexto2} onChange={(e) => setNuevoTexto2(e.target.value)} placeholder="Segunda línea de texto" maxLength={LIMITE_CARACTERES}/>
+                <div className="flex justify-end mt-1"><span className="text-xs text-gray-500">{nuevoTexto2.length}/{LIMITE_CARACTERES}</span></div>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">
-                  Velocidad
-                </label>
-                <select
-                  id="mensaje-velocidad"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevaVelocidad}
-                  onChange={(e) => setNuevaVelocidad(e.target.value)}
-                >
-                  <option value="">Seleccionar velocidad</option>
-                  <option value="0.5">0.5</option>
-                  <option value="1">1</option>
-                  <option value="1.5">1.5</option>
-                  <option value="2">2</option>
-                  <option value="2.5">2.5</option>
-                  <option value="3">3</option>
-                  <option value="3.5">3.5</option>
-                  <option value="4">4</option>
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">Velocidad</label>
+                <select id="mensaje-velocidad" className="w-full border rounded px-2 py-1" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
+                  <option value="">Seleccionar velocidad (ej: 1)</option>
+                  {opcionesVelocidad.map(v => v.replace('x','')).map(val => <option key={val} value={val}>{val}</option>)}
                 </select>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-animacion">
-                  Animación
-                </label>
-                <select
-                  id="mensaje-animacion"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevaAnimacion}
-                  onChange={(e) => setNuevaAnimacion(e.target.value)}
-                >
-                  {ANIMACIONES.map(anim => (
-                    <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
-                  ))}
+                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-animacion">Animación</label>
+                <select id="mensaje-animacion" className="w-full border rounded px-2 py-1" value={nuevaAnimacion} onChange={(e) => setNuevaAnimacion(e.target.value)}>
+                  {ANIMACIONES.map(anim => (<option key={anim.valor} value={anim.valor}>{anim.nombre}</option>))}
                 </select>
               </div>
               <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm"
-                  onClick={() => setModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
-                  disabled={nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""}
-                >
-                  Agregar
-                </button>
+                <button type="button" className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm" onClick={() => setModalOpen(false)}>Cancelar</button>
+                <button type="submit" className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm" disabled={(nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") || !tableroSeleccionado}>Agregar</button>
               </div>
             </form>
           </div>
         </div>
       )}
+      <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
+      {notification.show && (
+        <div
+          className={`fixed bottom-0 right-0 m-6 w-auto max-w-sm shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' : notification.type === 'error' ? 'bg-white border-red-500' : 'bg-white border-yellow-500'}`}
+          role="alert"
+        >
+          <div className="flex items-center">
+            <strong className={`font-semibold ${notification.type === 'success' ? 'text-green-700' : notification.type === 'error' ? 'text-red-700' : 'text-yellow-700'}`}>
+              {notification.title}
+            </strong>
+            <button onClick={() => setNotification(prev => ({ ...prev, show: false }))} className="ml-auto -mr-2 -mt-2 text-gray-400 hover:text-gray-600">
+              <span className="text-xl">×</span>
+            </button>
+          </div>
+          <span className="block text-gray-600 mt-1 text-sm">{notification.message}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -41,12 +41,24 @@ export const obtenerGrupos = async () => {
 export const obtenerTableros = async () => {
     try {
         const response = await axiosAuth.get('api/board/board-list');
+        console.log("Tableros obtenidos:", response.data);
         return response.data;
     } catch (error) {
         console.error("Error al obtener listado de grupos:", error);
         throw error;
     }
 };
+
+export const obtenerInfoTablero = async (idTablero) => {
+    try {
+        const response = await axiosAuth.get(`api/board/board/${idTablero}`);
+        console.log("Información del tablero:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error al obtener información del tablero:", error);
+        throw error;
+    }
+}
 
 export const crearGrupo = async ({ nombreGrupo }) => {
     try {

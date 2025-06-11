@@ -2,6 +2,7 @@ import { FaEyeSlash, FaEye, FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { registrarUsuario } from "../services/usuario.service";
+import Loading from "../components/shared/Loading";
 
 const Registro = () => {
   const [email, setEmail] = useState('');
@@ -222,6 +223,7 @@ const Registro = () => {
           <span className="block sm:inline text-gray-600 mt-2">{notificationMessage}</span>
         </div>
       )}
+      <Loading isOpen={loading} />
     </div>
   );
 };
