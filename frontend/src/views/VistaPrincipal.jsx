@@ -560,9 +560,9 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
             <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded border">
               {formatoMensaje === "json" ? (
-                <span>📋 Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
+                <span>Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
               ) : (
-                <span>📋 Formato: <code>texto1|texto2|velocidad|animacion</code></span>
+                <span>Formato: <code>texto1|texto2|velocidad|animacion</code></span>
               )}
             </div>
           </div>
