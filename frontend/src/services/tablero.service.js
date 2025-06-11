@@ -120,3 +120,14 @@ export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topic
         throw error;
     }
 };
+
+export const borrarTablero = async ({ idTablero}) => {
+    try {
+        const response = await axiosAuth.delete(`api/board/delete-board/${idTablero}`);
+        console.log("Tablero eliminado:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error al eliminar tablero: ", error);
+        throw error;
+    }
+};

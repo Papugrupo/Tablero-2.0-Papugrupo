@@ -38,7 +38,7 @@ const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroI
           style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
         >
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Tablero</h3>
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Editar Tablero</h3>
             <form onSubmit={handleEditTablero}>
               {/* Nombre de tablero */}
               <div className="mb-4">

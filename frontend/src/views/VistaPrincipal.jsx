@@ -6,7 +6,7 @@ import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import ModalEditTablero from "../components/modalEditTablero";
@@ -499,6 +499,25 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
   const handleModalOpen = () => setModalOpen(true);
 
+
+  const handleDeleteTablero = async () => {
+    const confirmacion = confirm("¿Seguro que desea eliminar este tablero? Esta acción no se puede deshacer.");
+
+    if (confirmacion) {
+        console.log("El usuario confirmó la eliminación.");
+        const res = await borrarTablero({idTablero: tableroInfo.idTablero});
+        if (res) {
+            window.location.reload();
+        } else {
+            showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
+        }
+
+    } else {
+
+        console.log("El usuario canceló la eliminación.");
+    }
+};
+
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
@@ -622,7 +641,10 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
-                    <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                    <div className="flex gap-4">
+                      <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                      <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
+                    </div>
                   </div>
                   <div className="mt-1 grid grid-cols-1 gap-1">
                     <div className="bg-gray-50 p-2 rounded border border-gray-200">
