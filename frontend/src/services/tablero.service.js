@@ -104,3 +104,19 @@ export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, 
         throw error;
     }
 };
+
+export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero }) => {
+    try {
+        const response = await axiosAuth.put(`api/board/update-board/${idTablero}`, {
+            nombreTablero: nombreTablero,
+            ipTablero: ipTablero,
+            topicoTablero: topicoTablero
+        });
+
+        console.log("Tablero actualizado:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error al editar tablero: ", error);
+        throw error;
+    }
+};

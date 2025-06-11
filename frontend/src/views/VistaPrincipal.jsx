@@ -9,6 +9,7 @@ import { MqttProvider, useMqtt } from "../shared/MqttConntection";
 import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
+import ModalEditTablero from "../components/modalEditTablero";
 
 // Componente Wrapper para configurar MqttProvider dinámicamente
 function MqttConfigWrapper() {
@@ -49,6 +50,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   // Estados para modales
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTableroOpen, setModalTableroOpen] = useState(false);
+  const [modalTableroOpenEdit, setModalTableroOpenEdit] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
@@ -618,7 +620,10 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                    <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                  </div>
                   <div className="mt-1 grid grid-cols-1 gap-1">
                     <div className="bg-gray-50 p-2 rounded border border-gray-200">
                       <div className="flex justify-between items-center">
@@ -867,6 +872,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       )}
       <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
+      {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo}/>}
+      
       {notification.show && (
         <div
           className={`fixed bottom-0 right-0 m-6 w-auto max-w-sm shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' : notification.type === 'error' ? 'bg-white border-red-500' : 'bg-white border-yellow-500'}`}
