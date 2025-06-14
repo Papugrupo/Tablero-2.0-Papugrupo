@@ -380,8 +380,9 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     }
 
     // Actualizar los textos que se mostrarán localmente
-    setMensajeTexto1(textoPersonalizado1.trim());
-    setMensajeTexto2(formatoMensaje === "plano" ? "" : textoPersonalizado2.trim());
+
+    setTextoMostrado1(textoPersonalizado1.trim());
+    setTextoMostrado2(formatoMensaje === "plano" ? "" : textoPersonalizado2.trim());
 
     // Actualizar el estado para mostrar el mensaje personalizado
     setMensajeActual("personalizado");
