@@ -9,6 +9,11 @@ import { MqttProvider, useMqtt } from "../shared/MqttConntection";
 import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
+import { HistMensajes } from "../components/HistMensajes";
+
+
+/** @type {Mensaje[]} */
+
 
 // Componente Wrapper para configurar MqttProvider dinámicamente
 function MqttConfigWrapper() {
@@ -90,8 +95,14 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   ];
 
 
-
   const LIMITE_CARACTERES = 100;
+
+  //para mostrar el historial del mensaje
+  const [historialMensajes, setHistorialMensajes] = useState([]);
+
+  const agregarAMensajeHistorial = (nuevoMensaje) => {
+    setHistorialMensajes((prev) => [...prev, nuevoMensaje]);
+  };
 
   const ANIMACIONES_LIMITE_REDUCIDO = [
     "PA_SCROLL_UP",
@@ -316,6 +327,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
           publish(topicCompleto, JSON.stringify(mensajeJSON));
           mensajeAEnviar = mensajeJSON;
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: topicCompleto,
+            mensaje: JSON.stringify(mensajeJSON),
+          });
         }
 
         console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
@@ -384,10 +401,22 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             animacion: animacionPersonalizada
           };
           publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: JSON.stringify(mensajeAPublicar),
+          });
         } else {
           // Formato texto plano
           mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
           publish('mensaje/actualizar', mensajeAPublicar);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: JSON.stringify(mensajeAPublicar),
+          });
         }
 
         console.log(`✅ Mensaje personalizado publicado en formato ${formatoMensaje}:`, mensajeAPublicar);
@@ -987,7 +1016,11 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             LIMPIAR TABLERO
           </button>
         </div>
-
+        {/* Columna par los Mensajes de la sesión*/}
+        <div className="p-6 bg-gray-900 min-h-[20vh] text-white rounded-2xl w-2xl">
+          <h1 className="text-xl mb-4">Mensajes Enviados</h1>
+          <HistMensajes mensajes={historialMensajes} />
+        </div>
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
         {cargando && !error && mensajes.length === 0 ? (
           <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">Cargando mensajes...</p></div>
