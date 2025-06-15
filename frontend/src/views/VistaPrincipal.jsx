@@ -702,8 +702,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
           </div>
         </div>
-        <div>
-          <div className="mt-2 sm:mt-3">
+        <div className="flex flex-col sm:flex-row w-full gap-4">
+          <div className="mt-2 sm:mt-3  sm:w-1/2">
             <div className="flex flex-col w-full gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
@@ -787,42 +787,21 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
-          <div className="led-display-container">
-            <div className="marqueee-container mb-2">
-              {mensajeActual !== null ? (
-                <div
-                  ref={marqueeRef1}
-                  className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
-                  style={{
-                    animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
-                    minWidth: 'fit-content',
-                    fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
-                  }}
-                >
-                  {mensajeTexto1}
-                </div>
-              ) : (
-                <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
-                  Tablero vacío
-                </div>
-              )}
-            </div>
-
-            {/* Segunda línea solo visible en modo JSON y si hay texto */}
-            {formatoMensaje !== "plano" && (
-              <div className="marqueee-container">
-                {mensajeActual !== null && mensajeTexto2 ? (
+          <div className="flex flex-col flex-1">
+            <h2 className="text-2xl sm:text-3xl font-bold mt-4  mb-3 sm:mb-4">Mensaje actual</h2>
+            <div className="led-display-container">
+              <div className="marqueee-container mb-2">
+                {mensajeActual !== null ? (
                   <div
-                    ref={marqueeRef2}
-                    className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
+                    ref={marqueeRef1}
+                    className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
                     style={{
                       animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
                       minWidth: 'fit-content',
                       fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
                     }}
                   >
-                    {mensajeTexto2}
+                    {mensajeTexto1}
                   </div>
                 ) : (
                   <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
@@ -830,7 +809,30 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                   </div>
                 )}
               </div>
-            )}
+
+              {/* Segunda línea solo visible en modo JSON y si hay texto */}
+              {formatoMensaje !== "plano" && (
+                <div className="marqueee-container">
+                  {mensajeActual !== null && mensajeTexto2 ? (
+                    <div
+                      ref={marqueeRef2}
+                      className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
+                      style={{
+                        animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                        minWidth: 'fit-content',
+                        fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
+                      }}
+                    >
+                      {mensajeTexto2}
+                    </div>
+                  ) : (
+                    <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
+                      Tablero vacío
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
