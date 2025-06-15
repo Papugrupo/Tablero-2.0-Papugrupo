@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css'; // Reutiliza los estilos existentes
 import { crearGrupo,unirseGrupo,obtenerGrupos } from "../services/tablero.service";
 import { useNavigate } from "react-router-dom";
 
 export default function SeleccionarGrupo() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState("");
   const [nombreNuevoGrupo, setNombreNuevoGrupo] = useState("");
@@ -81,8 +79,7 @@ export default function SeleccionarGrupo() {
 
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
-      <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
+      <Header/>
       <main className="p-6 md:px-36 rounded-lg">
         <h1 className="text-2xl font-bold mb-6">Hola!</h1>
         <p className="mb-4">Para seguir con el proceso de registro, necesitas seleccionar o crear un grupo para ser asignado a él.</p>

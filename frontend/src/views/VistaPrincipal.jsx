@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from "react";
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
@@ -38,7 +37,6 @@ export default function VistaPrincipal() {
 
 // Componente de contenido que usa MQTT y maneja la lógica de la vista
 function VistaPrincipalContent({ onTableroConfigChange }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null);
   const [tableroInfo, setTableroInfo] = useState(null);
   const [notification, setNotification] = useState({
@@ -646,15 +644,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
-      <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
-
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black opacity-50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <Header/>
 
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
