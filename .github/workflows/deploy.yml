@@ -1,0 +1,55 @@
+name: Build and Deploy Remote
+
+on:
+  push:
+    branches: [github-actions]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: cd frontend && npm install
+    
+    - name: Create .env
+      run: |
+        cd frontend
+        echo "VITE_BROKER_MQTT_URL=\"${{ secrets.VITE_BROKER_MQTT_URL }}\"" >> .env
+        echo "VITE_API_BACKEND=\"${{ secrets.VITE_API_BACKEND }}\"" >> .env
+
+
+    - name: Build React project
+      run: cd frontend && npm run build
+
+    - name: Create deploy archive (only content of dist/)
+      run: tar -czf dist.tar.gz -C frontend/dist .
+
+    - name: Upload archive to VPS
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_PRIVATE_KEY }}
+        source: "dist.tar.gz"
+        target: "/tmp/"
+
+    - name: Extract archive on VPS
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_PRIVATE_KEY }}
+        script: |
+          mkdir -p "${{ secrets.VPS_TARGET_PATH }}"
+          rm -rf "${{ secrets.VPS_TARGET_PATH }}/*"
+          tar -xzf /tmp/dist.tar.gz -C "${{ secrets.VPS_TARGET_PATH }}"
+          rm /tmp/dist.tar.gz
