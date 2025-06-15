@@ -702,126 +702,105 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
           </div>
         </div>
-        <div className="mt-2 sm:mt-3">
-          <div className="flex flex-col sm:flex-row w-full gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Tablero actual:
-              </label>
-              <div className="relative w-full sm:w-64">
-                <select
-                  id="tablero-selector"
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
-                  value={tableroSeleccionado}
-                  onChange={(e) => setTableroSeleccionado(e.target.value)}
-                >
-                  <option value="" disabled={!!tableroSeleccionado}>
-                    Seleccione un tablero
-                  </option>
-                  {idTableros.length === 0 && !cargando ? (
-                    <option value="" disabled>No hay tableros disponibles</option>
-                  ) : (
-                    idTableros.map((tablero) => (
-                      <option key={tablero.idTablero} value={tablero.idTablero}>
-                        {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
-                      </option>
-                    ))
-                  )}
-                </select>
+        <div>
+          <div className="mt-2 sm:mt-3">
+            <div className="flex flex-col w-full gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Tablero actual:
+                </label>
+                <div className="relative w-full sm:w-64">
+                  <select
+                    id="tablero-selector"
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
+                    value={tableroSeleccionado}
+                    onChange={(e) => setTableroSeleccionado(e.target.value)}
+                  >
+                    <option value="" disabled={!!tableroSeleccionado}>
+                      Seleccione un tablero
+                    </option>
+                    {idTableros.length === 0 && !cargando ? (
+                      <option value="" disabled>No hay tableros disponibles</option>
+                    ) : (
+                      idTableros.map((tablero) => (
+                        <option key={tablero.idTablero} value={tablero.idTablero}>
+                          {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
               </div>
+
+              {tableroInfo && tableroSeleccionado && (
+                <div className="flex-1 bg-white rounded-lg shadow-md p-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
+                      <p className="text-xs text-gray-500">
+                        Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        {tableroInfo.Mensajes?.length || 0} mensajes guardados
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ID: {tableroInfo.idTablero.substring(0, 8)}...
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                      <div className="flex gap-4">
+                        <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                        <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
+                      </div>
+                    </div>
+                    <div className="mt-1 grid grid-cols-1 gap-1">
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">IP:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">Protocolo:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {tableroInfo && tableroSeleccionado && (
-              <div className="flex-1 bg-white rounded-lg shadow-md p-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
-                    <p className="text-xs text-gray-500">
-                      Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                      {tableroInfo.Mensajes?.length || 0} mensajes guardados
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      ID: {tableroInfo.idTablero.substring(0, 8)}...
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
-                    <div className="flex gap-4">
-                      <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
-                      <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
-                    </div>
-                  </div>
-                  <div className="mt-1 grid grid-cols-1 gap-1">
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">IP:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">Protocolo:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
-        <div className="led-display-container">
-          <div className="marqueee-container mb-2">
-            {mensajeActual !== null ? (
-              <div
-                ref={marqueeRef1}
-                className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
-                style={{
-                  animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
-                  minWidth: 'fit-content',
-                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
-                }}
-              >
-                {mensajeTexto1}
-              </div>
-            ) : (
-              <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
-                Tablero vacío
-              </div>
-            )}
           </div>
 
-          {/* Segunda línea solo visible en modo JSON y si hay texto */}
-          {formatoMensaje !== "plano" && (
-            <div className="marqueee-container">
-              {mensajeActual !== null && mensajeTexto2 ? (
+          <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
+          <div className="led-display-container">
+            <div className="marqueee-container mb-2">
+              {mensajeActual !== null ? (
                 <div
-                  ref={marqueeRef2}
-                  className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
+                  ref={marqueeRef1}
+                  className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
                   style={{
                     animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
                     minWidth: 'fit-content',
                     fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
                   }}
                 >
-                  {mensajeTexto2}
+                  {mensajeTexto1}
                 </div>
               ) : (
                 <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
@@ -829,7 +808,30 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                 </div>
               )}
             </div>
-          )}
+
+            {/* Segunda línea solo visible en modo JSON y si hay texto */}
+            {formatoMensaje !== "plano" && (
+              <div className="marqueee-container">
+                {mensajeActual !== null && mensajeTexto2 ? (
+                  <div
+                    ref={marqueeRef2}
+                    className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
+                    style={{
+                      animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                      minWidth: 'fit-content',
+                      fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
+                    }}
+                  >
+                    {mensajeTexto2}
+                  </div>
+                ) : (
+                  <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
+                    Tablero vacío
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex w-full justify-end items-center mt-4">
