@@ -6,11 +6,11 @@ import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import { HistMensajes } from "../components/HistMensajes";
-
+import ModalEditTablero from "../components/modalEditTablero";
 
 /** @type {Mensaje[]} */
 
@@ -54,6 +54,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   // Estados para modales
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTableroOpen, setModalTableroOpen] = useState(false);
+  const [modalTableroOpenEdit, setModalTableroOpenEdit] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
@@ -624,6 +625,25 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
   const handleModalOpen = () => setModalOpen(true);
 
+
+  const handleDeleteTablero = async () => {
+    const confirmacion = confirm("¿Seguro que desea eliminar este tablero? Esta acción no se puede deshacer.");
+
+    if (confirmacion) {
+        console.log("El usuario confirmó la eliminación.");
+        const res = await borrarTablero({idTablero: tableroInfo.idTablero});
+        if (res) {
+            window.location.reload();
+        } else {
+            showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
+        }
+
+    } else {
+
+        console.log("El usuario canceló la eliminación.");
+    }
+};
+
   return (
     <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
       <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
@@ -743,7 +763,13 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                    <div className="flex gap-4">
+                      <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                      <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
+                    </div>
+                  </div>
                   <div className="mt-1 grid grid-cols-1 gap-1">
                     <div className="bg-gray-50 p-2 rounded border border-gray-200">
                       <div className="flex justify-between items-center">
@@ -1257,6 +1283,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       )}
       <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
+      {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo}/>}
+      
       {notification.show && (
         <div
           className={`fixed bottom-0 right-0 m-6 w-auto max-w-sm shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' : notification.type === 'error' ? 'bg-white border-red-500' : 'bg-white border-yellow-500'}`}
