@@ -1038,7 +1038,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           </button>
         </div>
         {/* Columna par los Mensajes de la sesión*/}
-        <div className="p-6 bg-gray-900 min-h-[20vh] text-white rounded-2xl w-2xl">
+        <div className="p-6 bg-gray-900 min-h-[20vh] text-white rounded-2xl mt-4 w-full sm:w-1/3">
           <h1 className="text-xl mb-4">Mensajes Enviados</h1>
           <HistMensajes mensajes={historialMensajes} />
         </div>
