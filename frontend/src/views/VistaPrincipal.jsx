@@ -643,7 +643,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 };
 
   return (
-    <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
+    <div className="min-h-screen bg-light text-darkNeutral">
       <Header/>
 
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
@@ -660,7 +660,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
               <button
                 onClick={reconnect}
                 disabled={connecting}
-                className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
+                className="bg-primary hover:bg-secondary text-light text-xs px-2 py-1 rounded transition-colors duration-300"
               >
                 {`Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
               </button>
@@ -668,17 +668,17 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
           </div>
         </div>
-        <div className="mb-4 bg-white p-3 rounded-lg shadow-md">
+        <div className="mb-4 bg-light p-3 rounded-lg shadow-md transition-colors duration-300">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+            <label className="text-sm font-medium text-darkNeutral whitespace-nowrap transition-colors duration-300">
               Formato de mensaje MQTT:
             </label>
             <div className="flex gap-2">
               <button
                 onClick={() => setFormatoMensaje("json")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formatoMensaje === "json"
-                  ? 'bg-[#109d95] text-white shadow-md'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${formatoMensaje === "json"
+                  ? 'bg-primary text-light shadow-md'
+                  : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
                   }`}
               >
                 📄 JSON
@@ -686,8 +686,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
               <button
                 onClick={() => setFormatoMensaje("plano")}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formatoMensaje === "plano"
-                  ? 'bg-[#109d95] text-white shadow-md'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-primary text-light shadow-md'
+                  : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
                   }`}
               >
                 📝 Texto Plano
@@ -706,24 +706,24 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           <div className="mt-2 sm:mt-3  sm:w-1/2">
             <div className="flex flex-col w-full gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                <label htmlFor="tablero-selector" className="text-sm font-medium text-darkNeutral whitespace-nowrap transition-colors duration-300">
                   Tablero actual:
                 </label>
                 <div className="relative w-full sm:w-64">
                   <select
                     id="tablero-selector"
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
+                    className="w-full p-2 border border-secondary rounded focus:outline-none focus:ring-2 focus:ring-primary bg-light text-darkNeutral text-sm transition-colors duration-300"
                     value={tableroSeleccionado}
                     onChange={(e) => setTableroSeleccionado(e.target.value)}
                   >
-                    <option value="" disabled={!!tableroSeleccionado}>
+                    <option value="" disabled={!!tableroSeleccionado} className="bg-light text-darkNeutral">
                       Seleccione un tablero
                     </option>
                     {idTableros.length === 0 && !cargando ? (
-                      <option value="" disabled>No hay tableros disponibles</option>
+                      <option value="" disabled className="bg-light text-darkNeutral">No hay tableros disponibles</option>
                     ) : (
                       idTableros.map((tablero) => (
-                        <option key={tablero.idTablero} value={tablero.idTablero}>
+                        <option key={tablero.idTablero} value={tablero.idTablero} className="bg-light text-darkNeutral">
                           {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
                         </option>
                       ))
@@ -757,7 +757,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
                       <div className="flex gap-4">
-                        <button onClick={() => setModalTableroOpenEdit(true)} className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded">Modificar</button>
+                        <button onClick={() => setModalTableroOpenEdit(true)} className="bg-primary hover:bg-secondary text-light text-xs px-2 py-1 rounded transition-colors duration-300">Modificar</button>
                         <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
                       </div>
                     </div>
