@@ -2,13 +2,17 @@ import React, { useRef, useEffect, useState } from "react";
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
+import { HistMensajes } from "../components/HistMensajes";
+import ModalEditTablero from "../components/modalEditTablero";
+
+/** @type {Mensaje[]} */
+
 
 // Componente Wrapper para configurar MqttProvider dinámicamente
 function MqttConfigWrapper() {
@@ -33,7 +37,6 @@ export default function VistaPrincipal() {
 
 // Componente de contenido que usa MQTT y maneja la lógica de la vista
 function VistaPrincipalContent({ onTableroConfigChange }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mensajeActual, setMensajeActual] = useState(null);
   const [tableroInfo, setTableroInfo] = useState(null);
   const [notification, setNotification] = useState({
@@ -49,6 +52,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   // Estados para modales
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTableroOpen, setModalTableroOpen] = useState(false);
+  const [modalTableroOpenEdit, setModalTableroOpenEdit] = useState(false);
   const [nuevoTexto1, setNuevoTexto1] = useState("");
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
@@ -75,6 +79,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
   const [animacionPersonalizada, setAnimacionPersonalizada] = useState("PA_SCROLL_LEFT");
   const [animacionActual, setAnimacionActual] = useState("PA_SCROLL_LEFT");
+  const [modoUnaLinea, setModoUnaLinea] = useState(false);
 
   const ANIMACIONES = [
     { valor: "PA_SCROLL_LEFT", nombre: "Desplazamiento a la izquierda" },
@@ -88,7 +93,42 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     { valor: "PA_NO_EFFECT", nombre: "Sin efecto" },
   ];
 
+
   const LIMITE_CARACTERES = 100;
+
+  //para mostrar el historial del mensaje
+  const [historialMensajes, setHistorialMensajes] = useState([]);
+
+  const agregarAMensajeHistorial = (nuevoMensaje) => {
+    setHistorialMensajes((prev) => [...prev, nuevoMensaje]);
+  };
+
+  const ANIMACIONES_LIMITE_REDUCIDO = [
+    "PA_SCROLL_UP",
+    "PA_SCROLL_DOWN",
+    "PA_WIPE",
+    "PA_CLOSING",
+    "PA_OPENING",
+    "PA_FADE"
+  ];
+
+  // Límite de caracteres para animaciones específicas
+  const LIMITE_CARACTERES_REDUCIDO = 11;
+
+  // Función para validar la longitud del texto según la animación seleccionada
+  const validarLongitudTexto = (texto, animacion) => {
+    if (ANIMACIONES_LIMITE_REDUCIDO.includes(animacion)) {
+      return texto.length <= LIMITE_CARACTERES_REDUCIDO;
+    }
+    return texto.length <= LIMITE_CARACTERES;
+  };
+
+  // Función para obtener el límite de caracteres según la animación
+  const obtenerLimiteCaracteres = (animacion) => {
+    return ANIMACIONES_LIMITE_REDUCIDO.includes(animacion)
+      ? LIMITE_CARACTERES_REDUCIDO
+      : LIMITE_CARACTERES;
+  };
 
   const { isConnected, mqttError, publish, reconnect, reconnectAttempts, connecting } = useMqtt();
 
@@ -96,6 +136,29 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     setNotification({ show: true, type, title, message });
     setTimeout(() => setNotification(prev => ({ ...prev, show: false })), duration);
   };
+
+  useEffect(() => {
+    if (ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada)) {
+      // Si el texto actual excede el límite para la animación seleccionada, truncarlo
+      if (textoPersonalizado1.length > LIMITE_CARACTERES_REDUCIDO) {
+        setTextoPersonalizado1(textoPersonalizado1.substring(0, LIMITE_CARACTERES_REDUCIDO));
+        showNotification(
+          'warning',
+          'Texto ajustado',
+          `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
+        );
+      }
+
+      if (textoPersonalizado2.length > LIMITE_CARACTERES_REDUCIDO) {
+        setTextoPersonalizado2(textoPersonalizado2.substring(0, LIMITE_CARACTERES_REDUCIDO));
+        showNotification(
+          'warning',
+          'Texto ajustado',
+          `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
+        );
+      }
+    }
+  }, [animacionPersonalizada]);
 
   const obtenerDatosUsuarioDesdeToken = async () => {
     setCargando(true);
@@ -156,6 +219,15 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   useEffect(() => {
     obtenerIdTableros();
   }, []);
+
+  useEffect(() => {
+    if (formatoMensaje === "plano") {
+      setTextoPersonalizado2('');
+      if (mensajeActual === "personalizado") {
+        setMensajeTexto2('');
+      }
+    }
+  }, [formatoMensaje]);
 
   // Efecto para cargar datos del tablero y gestionar MQTT cuando cambia tableroSeleccionado
   useEffect(() => {
@@ -236,13 +308,19 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
       if (isConnected && topicCompleto) {
         const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
-        
+
         let mensajeAEnviar;
         if (formatoMensaje === "plano") {
           // Formato de texto plano
           mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
           console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
           publish(topicCompleto, mensajeAEnviar);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: topicCompleto,
+            mensaje: mensajeAEnviar,
+          });
         } else {
           // Formato JSON
           const mensajeJSON = {
@@ -254,6 +332,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
           publish(topicCompleto, JSON.stringify(mensajeJSON));
           mensajeAEnviar = mensajeJSON;
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: topicCompleto,
+            mensaje: JSON.stringify(mensajeJSON),
+          });
         }
 
         console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
@@ -275,54 +359,102 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
   // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
-    if (textoPersonalizado1.trim() !== "" || textoPersonalizado2.trim() !== "") {
-      if (textoPersonalizado1.length > LIMITE_CARACTERES || textoPersonalizado2.length > LIMITE_CARACTERES) {
-        showNotification('warning', 'Límite excedido', `Máximo ${LIMITE_CARACTERES} caracteres por línea.`);
+    // Validación básica según el formato
+    if (formatoMensaje === "plano") {
+      if (textoPersonalizado1.trim() === "") {
+        showNotification('error', 'Texto vacío', 'Por favor ingresa el texto a mostrar.');
         return;
       }
+    } else {
+      if (textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") {
+        showNotification('error', 'Texto vacío', 'Por favor ingresa al menos una línea de texto.');
+        return;
+      }
+    }
 
-      setTextoMostrado1(textoPersonalizado1.trim());
-      setTextoMostrado2(textoPersonalizado2.trim());
-      setMensajeActual("personalizado");
-      setAnimacionActual(animacionPersonalizada);
+    // Verificar límites de caracteres según animación
+    const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+    if (textoPersonalizado1.length > limiteActual ||
+      (formatoMensaje !== "plano" && textoPersonalizado2.length > limiteActual)) {
+      showNotification(
+        'warning',
+        'Límite excedido',
+        `El mensaje excede el límite de ${limiteActual} caracteres permitidos para esta animación.`
+      );
+      return;
+    }
 
-      // Obtener el tópico del tablero actual
-      const topicCompleto = tableroInfo?.topicoTablero;
+    // Actualizar los textos que se mostrarán localmente
 
-      if (isConnected && topicCompleto) {
-        let mensajeAEnviar;
-        if (formatoMensaje === "plano") {
-          // Formato de texto plano
-          mensajeAEnviar = `${textoPersonalizado1.trim()}|${textoPersonalizado2.trim()}|${velocidadPersonalizada}|${animacionPersonalizada}`;
-          console.log("🔄 Publicando mensaje personalizado (texto plano):", mensajeAEnviar);
-          publish(topicCompleto, mensajeAEnviar);
-        } else {
+    setTextoMostrado1(textoPersonalizado1.trim());
+    setTextoMostrado2(formatoMensaje === "plano" ? "" : textoPersonalizado2.trim());
+
+    // Actualizar el estado para mostrar el mensaje personalizado
+    setMensajeActual("personalizado");
+    setAnimacionActual(animacionPersonalizada);
+
+    // Publicar mensaje en MQTT según el formato
+    if (isConnected) {
+      try {
+        let mensajeAPublicar;
+
+        if (formatoMensaje === "json") {
           // Formato JSON
-          const mensajeJSON = {
+          mensajeAPublicar = {
             texto1: textoPersonalizado1.trim(),
             texto2: textoPersonalizado2.trim(),
             velocidad: velocidadPersonalizada,
             animacion: animacionPersonalizada
           };
-          console.log("🔄 Publicando mensaje personalizado (JSON):", mensajeJSON);
-          publish(topicCompleto, JSON.stringify(mensajeJSON));
-          mensajeAEnviar = mensajeJSON;
+          publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: JSON.stringify(mensajeAPublicar),
+          });
+        } else {
+          // Formato texto plano
+          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
+          publish('mensaje/actualizar', mensajeAPublicar);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: JSON.stringify(mensajeAPublicar),
+          });
         }
 
-        console.log(`✅ Mensaje personalizado publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
-        showNotification('success', 'Mensaje enviado', `Texto personalizado enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
-      } else {
-        if (!topicCompleto) {
-          console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
-        }
-        if (!isConnected) {
-          console.warn('⚠️ No se pudo publicar: No hay conexión MQTT.');
-        }
-        showNotification('warning', 'Error de envío', 'No se pudo enviar el mensaje. Verifique la conexión y configuración del tablero.');
+        console.log(`✅ Mensaje personalizado publicado en formato ${formatoMensaje}:`, mensajeAPublicar);
+
+        // Mostrar feedback de éxito
+        showNotification(
+          'success',
+          'Mensaje enviado',
+          'El texto personalizado ha sido enviado correctamente al tablero LED'
+        );
+      } catch (error) {
+        console.error(`❌ Error al publicar mensaje: ${error.message}`);
+
+        // Mostrar feedback de error
+        showNotification(
+          'error',
+          'Error en el envío',
+          `No se pudo enviar el mensaje: ${error.message}`
+        );
       }
+    } else {
+      console.warn('❌ No se pudo publicar el mensaje personalizado: No hay conexión MQTT');
 
-      setSeleccionado(null);
+      // Mostrar feedback de advertencia
+      showNotification(
+        'warning',
+        'Sin conexión',
+        'No hay conexión MQTT. El mensaje se mostrará localmente pero no se enviará al tablero físico.'
+      );
     }
+
+    setSeleccionado(null); // Limpiar selección
   };
 
   // Función para limpiar el tablero
@@ -497,17 +629,28 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const opcionesVelocidad = ["x0.5", "x1", "x1.5", "x2", "x2.5", "x3", "x3.5", "x4"];
   const handleModalOpen = () => setModalOpen(true);
 
-  return (
-    <div className="min-h-screen bg-[#f4f9f9] text-[#1c2b2b]">
-      <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black opacity-50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+  const handleDeleteTablero = async () => {
+    const confirmacion = confirm("¿Seguro que desea eliminar este tablero? Esta acción no se puede deshacer.");
+
+    if (confirmacion) {
+        console.log("El usuario confirmó la eliminación.");
+        const res = await borrarTablero({idTablero: tableroInfo.idTablero});
+        if (res) {
+            window.location.reload();
+        } else {
+            showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
+        }
+
+    } else {
+
+        console.log("El usuario canceló la eliminación.");
+    }
+};
+
+  return (
+    <div className="min-h-screen bg-light text-darkNeutral">
+      <Header/>
 
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
@@ -523,7 +666,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
               <button
                 onClick={reconnect}
                 disabled={connecting}
-                className="bg-[#109d95] hover:bg-[#4fd1c5] text-white text-xs px-2 py-1 rounded"
+                className="bg-primary hover:bg-secondary text-light text-xs px-2 py-1 rounded transition-colors duration-300"
               >
                 {`Reconectar ${reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}`}
               </button>
@@ -531,29 +674,27 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             {mqttError && <span className="text-red-500 text-xs sm:text-sm ml-2">({mqttError})</span>}
           </div>
         </div>
-        <div className="mb-4 bg-white p-3 rounded-lg shadow-md">
+        <div className="mb-4 bg-light p-3 rounded-lg shadow-md transition-colors duration-300">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+            <label className="text-sm font-medium text-darkNeutral whitespace-nowrap transition-colors duration-300">
               Formato de mensaje MQTT:
             </label>
             <div className="flex gap-2">
               <button
                 onClick={() => setFormatoMensaje("json")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  formatoMensaje === "json"
-                    ? 'bg-[#109d95] text-white shadow-md'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${formatoMensaje === "json"
+                  ? 'bg-primary text-light shadow-md'
+                  : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
+                  }`}
               >
                 📄 JSON
               </button>
               <button
                 onClick={() => setFormatoMensaje("plano")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  formatoMensaje === "plano"
-                    ? 'bg-[#109d95] text-white shadow-md'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formatoMensaje === "plano"
+                  ? 'bg-primary text-light shadow-md'
+                  : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
+                  }`}
               >
                 📝 Texto Plano
               </button>
@@ -567,119 +708,137 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
           </div>
         </div>
-        <div className="mt-2 sm:mt-3">
-          <div className="flex flex-col sm:flex-row w-full gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <label htmlFor="tablero-selector" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Tablero actual:
-              </label>
-              <div className="relative w-full sm:w-64">
-                <select
-                  id="tablero-selector"
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95] bg-white text-sm"
-                  value={tableroSeleccionado}
-                  onChange={(e) => setTableroSeleccionado(e.target.value)}
-                >
-                  <option value="" disabled={!!tableroSeleccionado}>
-                    Seleccione un tablero
-                  </option>
-                  {idTableros.length === 0 && !cargando ? (
-                    <option value="" disabled>No hay tableros disponibles</option>
-                  ) : (
-                    idTableros.map((tablero) => (
-                      <option key={tablero.idTablero} value={tablero.idTablero}>
-                        {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
-                      </option>
-                    ))
-                  )}
-                </select>
+        <div className="flex flex-col sm:flex-row w-full gap-4">
+          <div className="mt-2 sm:mt-3  sm:w-1/2">
+            <div className="flex flex-col w-full gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label htmlFor="tablero-selector" className="text-sm font-medium text-darkNeutral whitespace-nowrap transition-colors duration-300">
+                  Tablero actual:
+                </label>
+                <div className="relative w-full sm:w-64">
+                  <select
+                    id="tablero-selector"
+                    className="w-full p-2 border border-secondary rounded focus:outline-none focus:ring-2 focus:ring-primary bg-light text-darkNeutral text-sm transition-colors duration-300"
+                    value={tableroSeleccionado}
+                    onChange={(e) => setTableroSeleccionado(e.target.value)}
+                  >
+                    <option value="" disabled={!!tableroSeleccionado} className="bg-light text-darkNeutral">
+                      Seleccione un tablero
+                    </option>
+                    {idTableros.length === 0 && !cargando ? (
+                      <option value="" disabled className="bg-light text-darkNeutral">No hay tableros disponibles</option>
+                    ) : (
+                      idTableros.map((tablero) => (
+                        <option key={tablero.idTablero} value={tablero.idTablero} className="bg-light text-darkNeutral">
+                          {tablero.nombreTablero || tablero.idTablero.substring(0, 8) + '...'}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
               </div>
+
+              {tableroInfo && tableroSeleccionado && (
+                <div className="flex-1 bg-white rounded-lg shadow-md p-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
+                      <p className="text-xs text-gray-500">
+                        Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        {tableroInfo.Mensajes?.length || 0} mensajes guardados
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ID: {tableroInfo.idTablero.substring(0, 8)}...
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
+                      <div className="flex gap-4">
+                        <button onClick={() => setModalTableroOpenEdit(true)} className="bg-primary hover:bg-secondary text-light text-xs px-2 py-1 rounded transition-colors duration-300">Modificar</button>
+                        <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
+                      </div>
+                    </div>
+                    <div className="mt-1 grid grid-cols-1 gap-1">
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">IP:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">Protocolo:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
+                          <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {tableroInfo && tableroSeleccionado && (
-              <div className="flex-1 bg-white rounded-lg shadow-md p-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
-                    <p className="text-xs text-gray-500">
-                      Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                      {tableroInfo.Mensajes?.length || 0} mensajes guardados
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      ID: {tableroInfo.idTablero.substring(0, 8)}...
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
-                  <div className="mt-1 grid grid-cols-1 gap-1">
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">IP:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">Protocolo:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
-                        <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
 
-        <h2 className="text-2xl sm:text-3xl font-bold mt-6 sm:mt-8 mb-3 sm:mb-4">Mensaje actual</h2>
-        <div className="led-display-container">
-          <div className="marqueee-container mb-2">
-            {mensajeActual !== null ? (
-              <div
-                ref={marqueeRef1}
-                className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
-                style={{
-                  animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
-                  minWidth: 'fit-content',
-                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
-                }}
-              >
-                {mensajeTexto1}
+          <div className="flex flex-col flex-1">
+            <h2 className="text-2xl sm:text-3xl font-bold mt-4  mb-3 sm:mb-4">Mensaje actual</h2>
+            <div className="led-display-container">
+              <div className="marqueee-container mb-2">
+                {mensajeActual !== null ? (
+                  <div
+                    ref={marqueeRef1}
+                    className={`marqueee-text ${obtenerClaseAnimacion(animacionActual)}`}
+                    style={{
+                      animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                      minWidth: 'fit-content',
+                      fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
+                    }}
+                  >
+                    {mensajeTexto1}
+                  </div>
+                ) : (
+                  <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
+                    Tablero vacío
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
-            )}
-          </div>
-          <div className="marqueee-container">
-            {mensajeActual !== null && mensajeTexto2 ? (
-              <div
-                ref={marqueeRef2}
-                className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
-                style={{
-                  animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
-                  minWidth: 'fit-content',
-                  fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
-                }}
-              >
-                {mensajeTexto2}
-              </div>
-            ) : (
-              <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>Tablero vacío</div>
-            )}
+
+              {/* Segunda línea solo visible en modo JSON y si hay texto */}
+              {formatoMensaje !== "plano" && (
+                <div className="marqueee-container">
+                  {mensajeActual !== null && mensajeTexto2 ? (
+                    <div
+                      ref={marqueeRef2}
+                      className={`marqueee-text marqueee-text-second ${obtenerClaseAnimacion(animacionActual)}`}
+                      style={{
+                        animation: duration ? `${obtenerClaseAnimacion(animacionActual)} ${duration}s linear ${animacionActual === "PA_NO_EFFECT" ? '' : 'infinite'}` : "none",
+                        minWidth: 'fit-content',
+                        fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem'
+                      }}
+                    >
+                      {mensajeTexto2}
+                    </div>
+                  ) : (
+                    <div className="marqueee-text text-gray-500" style={{ fontSize: window.innerWidth < 640 ? '1.5rem' : '2rem' }}>
+                      Tablero vacío
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -691,8 +850,14 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             CREAR NUEVO TABLERO
           </button>
         </div>
+        <div className="flex flex-row space-x-4 mt-6 sm:mt-8">
+        {/* Columna par los Mensajes de la sesión*/}
+        <div className="p-6 pt-[-6] bg-gray-900 min-h-[15vh] text-white rounded-2xl w-2/5">
+          <h1 className="text-xl mb-4">Mensajes Enviados</h1>
+          <HistMensajes mensajes={historialMensajes} />
+        </div>
 
-        <div className="mt-6 sm:mt-8 bg-white p-3 sm:p-4 rounded-lg shadow-md">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md w-3/5">
           <div className="flex flex-col sm:flex-row sm:items-center mb-4">
             <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
             <button
@@ -705,61 +870,168 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
               {modoPersonalizado ? 'Activado' : 'Desactivado'}
             </button>
           </div>
+
           {modoPersonalizado && (
             <div className="space-y-4">
               <div>
-                <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">Línea 1:</label>
-                <input
-                  type="text"
-                  id="textoPersonalizado1"
-                  value={textoPersonalizado1}
-                  onChange={(e) => { if (e.target.value.length <= LIMITE_CARACTERES) setTextoPersonalizado1(e.target.value);}}
-                  maxLength={LIMITE_CARACTERES}
-                  placeholder="Escribe la primera línea aquí..."
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                />
-                <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                  <span className="text-gray-500">Caracteres: {textoPersonalizado1.length}/{LIMITE_CARACTERES}</span>
-                  {textoPersonalizado1.length >= LIMITE_CARACTERES && (<span className="text-red-500">Límite alcanzado</span>)}
-                </div>
-                <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-2">Línea 2:</label>
-                <input
-                  type="text"
-                  id="textoPersonalizado2"
-                  value={textoPersonalizado2}
-                  onChange={(e) => { if (e.target.value.length <= LIMITE_CARACTERES) setTextoPersonalizado2(e.target.value);}}
-                  maxLength={LIMITE_CARACTERES}
-                  placeholder="Escribe la segunda línea aquí (opcional)..."
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                />
-                <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                  <span className="text-gray-500">Caracteres: {textoPersonalizado2.length}/{LIMITE_CARACTERES}</span>
-                  {textoPersonalizado2.length >= LIMITE_CARACTERES && (<span className="text-red-500">Límite alcanzado</span>)}
-                </div>
+                {formatoMensaje === "plano" ? (
+                  // Modo texto plano: solo un campo de texto
+                  <>
+                    <label htmlFor="textoPersonalizado" className="block text-sm font-medium text-gray-700 mb-1">
+                      Texto a mostrar:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="textoPersonalizado"
+                        value={textoPersonalizado1}
+                        onChange={(e) => {
+                          const nuevoTexto = e.target.value;
+                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                          if (nuevoTexto.length <= limiteActual) {
+                            setTextoPersonalizado1(nuevoTexto);
+                            setTextoPersonalizado2(''); // Limpiamos la segunda línea
+                          }
+                        }}
+                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                        placeholder="Escribe tu mensaje aquí..."
+                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                      />
+                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                          Máx: 11 car.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                      <span className="text-gray-500">
+                        Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
+                      </span>
+                      {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
+                        <span className="text-red-500">Límite alcanzado</span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  // Modo JSON: dos líneas de texto
+                  <>
+                    <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
+                      Línea 1:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="textoPersonalizado1"
+                        value={textoPersonalizado1}
+                        onChange={(e) => {
+                          const nuevoTexto = e.target.value;
+                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                          if (nuevoTexto.length <= limiteActual) {
+                            setTextoPersonalizado1(nuevoTexto);
+                          }
+                        }}
+                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                        placeholder="Escribe la primera línea aquí..."
+                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                      />
+                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                          Máx: 11 car.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                      <span className="text-gray-500">
+                        Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
+                      </span>
+                      {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
+                        <span className="text-red-500">Límite alcanzado</span>
+                      )}
+                    </div>
+
+                    <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-3">
+                      Línea 2:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="textoPersonalizado2"
+                        value={textoPersonalizado2}
+                        onChange={(e) => {
+                          const nuevoTexto = e.target.value;
+                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                          if (nuevoTexto.length <= limiteActual) {
+                            setTextoPersonalizado2(nuevoTexto);
+                          }
+                        }}
+                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                        placeholder="Escribe la segunda línea aquí (opcional)..."
+                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                      />
+                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                          Máx: 11 car.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                      <span className="text-gray-500">
+                        Caracteres: {textoPersonalizado2.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
+                      </span>
+                      {textoPersonalizado2.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
+                        <span className="text-red-500">Límite alcanzado</span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">Velocidad:</label>
-                  <select id="velocidadPersonalizada" value={velocidadPersonalizada} onChange={(e) => setVelocidadPersonalizada(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]">
-                    {opcionesVelocidad.map(opcion => (<option key={opcion} value={opcion}>{opcion}</option>))}
+                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                    Velocidad:
+                  </label>
+                  <select
+                    id="velocidadPersonalizada"
+                    value={velocidadPersonalizada}
+                    onChange={(e) => setVelocidadPersonalizada(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                  >
+                    {opcionesVelocidad.map(opcion => (
+                      <option key={opcion} value={opcion}>{opcion}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">Animación:</label>
-                  <select id="animacionPersonalizada" value={animacionPersonalizada} onChange={(e) => setAnimacionPersonalizada(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]">
-                    {ANIMACIONES.map(anim => (<option key={anim.valor} value={anim.valor}>{anim.nombre}</option>))}
+                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                    Animación:
+                  </label>
+                  <select
+                    id="animacionPersonalizada"
+                    value={animacionPersonalizada}
+                    onChange={(e) => setAnimacionPersonalizada(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                  >
+                    {ANIMACIONES.map(anim => (
+                      <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                    ))}
                   </select>
                 </div>
               </div>
+
               <button
                 onClick={actualizarMensajePersonalizado}
-                disabled={(textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") || !isConnected}
-                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") || !isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected}
+                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+                  }`}
               >
                 ACTUALIZAR CON TEXTO PERSONALIZADO
               </button>
             </div>
           )}
+        </div>
         </div>
 
         <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 gap-3 sm:gap-4">
@@ -778,7 +1050,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             LIMPIAR TABLERO
           </button>
         </div>
-
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
         {cargando && !error && mensajes.length === 0 ? (
           <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">Cargando mensajes...</p></div>
@@ -834,32 +1105,179 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Mensaje</h3>
             <form onSubmit={enviarNuevoMensaje}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
-                <input id="mensaje-texto1" type="text" className="w-full border rounded px-2 py-1" value={nuevoTexto1} onChange={(e) => setNuevoTexto1(e.target.value)} placeholder="Primera línea de texto" maxLength={LIMITE_CARACTERES}/>
-                <div className="flex justify-end mt-1"><span className="text-xs text-gray-500">{nuevoTexto1.length}/{LIMITE_CARACTERES}</span></div>
+              {/* Formato de mensaje actual (informativo) */}
+              <div className="bg-gray-50 p-2 rounded mb-3 text-xs text-gray-600 flex items-center">
+                <span className="font-medium mr-1">Formato actual:</span>
+                {formatoMensaje === "json" ?
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded">JSON (dos líneas)</span> :
+                  <span className="px-2 py-0.5 bg-green-100 text-green-800 font-medium rounded">Texto plano (una línea)</span>
+                }
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
-                <input id="mensaje-texto2" type="text" className="w-full border rounded px-2 py-1" value={nuevoTexto2} onChange={(e) => setNuevoTexto2(e.target.value)} placeholder="Segunda línea de texto" maxLength={LIMITE_CARACTERES}/>
-                <div className="flex justify-end mt-1"><span className="text-xs text-gray-500">{nuevoTexto2.length}/{LIMITE_CARACTERES}</span></div>
-              </div>
+
+              {/* Campos de texto que cambian según el formato */}
+              {formatoMensaje === "plano" ? (
+                // Modo texto plano: una línea
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto">Mensaje</label>
+                  <div className="relative">
+                    <input
+                      id="mensaje-texto"
+                      type="text"
+                      className="w-full border rounded px-2 py-1"
+                      value={nuevoTexto1}
+                      onChange={(e) => {
+                        const nuevoTexto = e.target.value;
+                        const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                        if (nuevoTexto.length <= limiteActual) {
+                          setNuevoTexto1(nuevoTexto);
+                        }
+                      }}
+                      placeholder="Escribe tu mensaje aquí"
+                      maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                    />
+                    {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                      <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                        Máx: 11 car.
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-gray-500">
+                      {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                    </span>
+                    {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                      <span className="text-xs text-red-500">Límite alcanzado</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Modo JSON: dos líneas
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
+                    <div className="relative">
+                      <input
+                        id="mensaje-texto1"
+                        type="text"
+                        className="w-full border rounded px-2 py-1"
+                        value={nuevoTexto1}
+                        onChange={(e) => {
+                          const nuevoTexto = e.target.value;
+                          const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                          if (nuevoTexto.length <= limiteActual) {
+                            setNuevoTexto1(nuevoTexto);
+                          }
+                        }}
+                        placeholder="Primera línea de texto"
+                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                      />
+                      {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                          Máx: 11 car.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-xs text-gray-500">
+                        {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                      </span>
+                      {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                        <span className="text-xs text-red-500">Límite alcanzado</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
+                    <div className="relative">
+                      <input
+                        id="mensaje-texto2"
+                        type="text"
+                        className="w-full border rounded px-2 py-1"
+                        value={nuevoTexto2}
+                        onChange={(e) => {
+                          const nuevoTexto = e.target.value;
+                          const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                          if (nuevoTexto.length <= limiteActual) {
+                            setNuevoTexto2(nuevoTexto);
+                          }
+                        }}
+                        placeholder="Segunda línea de texto"
+                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                      />
+                      {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                          Máx: 11 car.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-xs text-gray-500">
+                        {nuevoTexto2.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                      </span>
+                      {nuevoTexto2.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                        <span className="text-xs text-red-500">Límite alcanzado</span>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">Velocidad</label>
                 <select id="mensaje-velocidad" className="w-full border rounded px-2 py-1" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
-                  <option value="">Seleccionar velocidad (ej: 1)</option>
-                  {opcionesVelocidad.map(v => v.replace('x','')).map(val => <option key={val} value={val}>{val}</option>)}
+                  <option value="">Seleccionar velocidad</option>
+                  {opcionesVelocidad.map(v => v.replace('x', '')).map(val => <option key={val} value={val}>{val}</option>)}
                 </select>
               </div>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="mensaje-animacion">Animación</label>
-                <select id="mensaje-animacion" className="w-full border rounded px-2 py-1" value={nuevaAnimacion} onChange={(e) => setNuevaAnimacion(e.target.value)}>
-                  {ANIMACIONES.map(anim => (<option key={anim.valor} value={anim.valor}>{anim.nombre}</option>))}
+                <select
+                  id="mensaje-animacion"
+                  className="w-full border rounded px-2 py-1"
+                  value={nuevaAnimacion}
+                  onChange={(e) => {
+                    setNuevaAnimacion(e.target.value);
+                    // Truncar el texto si es necesario al cambiar a animación con límite reducido
+                    if (ANIMACIONES_LIMITE_REDUCIDO.includes(e.target.value)) {
+                      if (nuevoTexto1.length > LIMITE_CARACTERES_REDUCIDO) {
+                        setNuevoTexto1(nuevoTexto1.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                        showNotification(
+                          'warning',
+                          'Texto ajustado',
+                          `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
+                        );
+                      }
+                      if (formatoMensaje === "json" && nuevoTexto2.length > LIMITE_CARACTERES_REDUCIDO) {
+                        setNuevoTexto2(nuevoTexto2.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                      }
+                    }
+                  }}
+                >
+                  {ANIMACIONES.map(anim => (
+                    <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                  ))}
                 </select>
               </div>
+
               <div className="flex justify-end gap-2 mt-4">
-                <button type="button" className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm" onClick={() => setModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm" disabled={(nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") || !tableroSeleccionado}>Agregar</button>
+                <button
+                  type="button"
+                  className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
+                  disabled={(formatoMensaje === "plano" ? nuevoTexto1.trim() === "" :
+                    (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""))
+                    || !nuevaVelocidad || !tableroSeleccionado}
+                >
+                  Agregar
+                </button>
               </div>
             </form>
           </div>
@@ -867,6 +1285,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       )}
       <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
+      {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo}/>}
+      
       {notification.show && (
         <div
           className={`fixed bottom-0 right-0 m-6 w-auto max-w-sm shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' : notification.type === 'error' ? 'bg-white border-red-500' : 'bg-white border-yellow-500'}`}

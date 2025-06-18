@@ -1,60 +1,34 @@
 import { useState } from "react";
-import { crearTablero, obtenerTableros as serviceObtenerTableros} from "../services/tablero.service";
+import { editarTablero } from "../services/tablero.service";
 
-const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
+const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroInfo})=>{
     const LIMITE_CARACTERES = 100;
 
-    const [nombreTablero,setNombreTablero] = useState("")
-    const [ipTablero, setIpTablero] = useState("");
-    const [topicoTablero, setTopicoTablero] = useState("");
-    const [protocoloTablero] = useState("ws");
-    const [error, setError] = useState("");
+    console.log("Tablero Info:", tableroInfo);
 
-    const handleAddTablero = async (e) =>{
+
+    const [nombreTablero,setNombreTablero] = useState(tableroInfo.nombreTablero || "")
+    const [ipTablero, setIpTablero] = useState(tableroInfo.ipTablero || "");
+    const [topicoTablero, setTopicoTablero] = useState(tableroInfo.topicoTablero || "");
+    const [protocoloTablero] = useState("ws")
+
+    const handleEditTablero = async (e) =>{
       e.preventDefault();
-      setError("");
+      const res = await editarTablero({ 
+        idTablero: tableroInfo.idTablero,
+        nombreTablero: nombreTablero.trim(),
+        ipTablero: ipTablero.trim(),
+        topicoTablero: topicoTablero.trim(),
+      });
 
-      const trimmedNombreTablero = nombreTablero.trim();
-
-      if (trimmedNombreTablero === "") {
-        setError("El nombre del tablero no puede estar vacío.");
-        return;
-      }
-
-      let existingTableros = [];
-
-      try{
-        existingTableros = await serviceObtenerTableros();
-      } catch (error) {
-        console.error("Error al verificar tableros existentes:", error);
-        setError("Error al verificar tableros existentes.");
-        return;
-      }
-
-      const isDuplicated = existingTableros.some(
-        (tablero) => tablero.nombreTablero.trim().toLowerCase() === trimmedNombreTablero.toLowerCase()
-      );
-
-      if (isDuplicated) {
-        setError("Ya existe un tablero con este nombre. Por favor, elige otro.");
-        return;
-      }
-      
-      try{
-          const res = await crearTablero({ 
-            nombreTablero: nombreTablero.trim(),
-            ipTablero: ipTablero.trim(),
-            topicoTablero: topicoTablero.trim(),
-            protocoloTablero: protocoloTablero.trim()
-        });
-
-        if (res){
-          refreshTableros();
-          setModalOpen(false)
-        }
-      } catch (err) {
-        console.error("Error al crear tablero:", err);
-        setError("Error al crear tablero. Por favor, inténtalo de nuevo.");
+      if (res){
+        setTableroInfo(prevInfo => ({
+                ...prevInfo,
+                nombreTablero: nombreTablero.trim(),
+                ipTablero: ipTablero.trim(),         
+                topicoTablero: topicoTablero.trim(),
+            }));
+        setModalOpen(false)
       }
     }
 
@@ -64,20 +38,17 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
           style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
         >
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Tablero</h3>
-            <form onSubmit={handleAddTablero}>
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Editar Tablero</h3>
+            <form onSubmit={handleEditTablero}>
               {/* Nombre de tablero */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Nombre de tablero</label>
                 <input
                   id="nombre-tablero"
                   type="text"
-                  className={`w-full border rounded px-2 py-1 ${error ? 'border-red-500' : ''}`}
+                  className="w-full border rounded px-2 py-1"
                   value={nombreTablero}
-                  onChange={(e) =>{  
-                    setNombreTablero(e.target.value)
-                    setError("");
-                  }}
+                  onChange={(e) => setNombreTablero(e.target.value)}
                   placeholder="Nombre del tablero"
                   maxLength={LIMITE_CARACTERES}
                 />
@@ -86,7 +57,6 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                     {nombreTablero.length}/{LIMITE_CARACTERES}
                   </span>
                 </div>
-                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
               </div>
               {/* Protocolo tablero */}
               <div className="mb-4 ">
@@ -150,9 +120,9 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                 <button
                   type="submit"
                   className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
-                  disabled={nombreTablero.trim() === "" || error !== "" || ipTablero.trim() === "" || topicoTablero.trim() === ""}
+                  disabled={nombreTablero.trim() === ""}
                 >
-                  Agregar
+                  Editar
                 </button>
               </div>
             </form>
@@ -161,4 +131,4 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
     )
 }
 
-export default ModalNewTablero;
+export default ModalEditTablero;

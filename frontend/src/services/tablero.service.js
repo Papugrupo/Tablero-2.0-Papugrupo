@@ -104,3 +104,30 @@ export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, 
         throw error;
     }
 };
+
+export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero }) => {
+    try {
+        const response = await axiosAuth.put(`api/board/update-board/${idTablero}`, {
+            nombreTablero: nombreTablero,
+            ipTablero: ipTablero,
+            topicoTablero: topicoTablero
+        });
+
+        console.log("Tablero actualizado:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error al editar tablero: ", error);
+        throw error;
+    }
+};
+
+export const borrarTablero = async ({ idTablero}) => {
+    try {
+        const response = await axiosAuth.delete(`api/board/delete-board/${idTablero}`);
+        console.log("Tablero eliminado:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error al eliminar tablero: ", error);
+        throw error;
+    }
+};
