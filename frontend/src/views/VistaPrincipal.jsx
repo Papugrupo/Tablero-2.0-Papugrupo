@@ -315,6 +315,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
           console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
           publish(topicCompleto, mensajeAEnviar);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: topicCompleto,
+            mensaje: mensajeAEnviar,
+          });
         } else {
           // Formato JSON
           const mensajeJSON = {
