@@ -850,8 +850,14 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             CREAR NUEVO TABLERO
           </button>
         </div>
+        <div className="flex flex-row space-x-4 mt-6 sm:mt-8">
+        {/* Columna par los Mensajes de la sesión*/}
+        <div className="p-6 pt-[-6] bg-gray-900 min-h-[15vh] text-white rounded-2xl w-2/5">
+          <h1 className="text-xl mb-4">Mensajes Enviados</h1>
+          <HistMensajes mensajes={historialMensajes} />
+        </div>
 
-        <div className="mt-6 sm:mt-8 bg-white p-3 sm:p-4 rounded-lg shadow-md">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md w-3/5">
           <div className="flex flex-col sm:flex-row sm:items-center mb-4">
             <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
             <button
@@ -1026,6 +1032,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </div>
           )}
         </div>
+        </div>
 
         <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 gap-3 sm:gap-4">
           <button
@@ -1042,11 +1049,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           >
             LIMPIAR TABLERO
           </button>
-        </div>
-        {/* Columna par los Mensajes de la sesión*/}
-        <div className="p-6 bg-gray-900 min-h-[20vh] text-white rounded-2xl mt-4 w-full sm:w-1/3">
-          <h1 className="text-xl mb-4">Mensajes Enviados</h1>
-          <HistMensajes mensajes={historialMensajes} />
         </div>
         <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
         {cargando && !error && mensajes.length === 0 ? (
