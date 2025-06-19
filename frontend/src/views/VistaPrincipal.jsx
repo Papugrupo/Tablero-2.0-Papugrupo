@@ -71,15 +71,15 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [tableroSeleccionado, setTableroSeleccionado] = useState("");
 
   // Estados para texto personalizado
-  const [textoPersonalizado1, setTextoPersonalizado1] = useState("");
-  const [textoPersonalizado2, setTextoPersonalizado2] = useState("");
+  const [textoPersonalizado1, setTextoPersonalizado1] = useState('');
+  const [textoPersonalizado2, setTextoPersonalizado2] = useState('');
+  const [texto2Cache, setTexto2Cache] = useState('');
   const [textoMostrado1, setTextoMostrado1] = useState("");
   const [textoMostrado2, setTextoMostrado2] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
   const [animacionPersonalizada, setAnimacionPersonalizada] = useState("PA_SCROLL_LEFT");
   const [animacionActual, setAnimacionActual] = useState("PA_SCROLL_LEFT");
-  const [modoUnaLinea, setModoUnaLinea] = useState(false);
 
   const ANIMACIONES = [
     { valor: "PA_SCROLL_LEFT", nombre: "Desplazamiento a la izquierda" },
@@ -222,10 +222,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
   useEffect(() => {
     if (formatoMensaje === "plano") {
-      setTextoPersonalizado2('');
-      if (mensajeActual === "personalizado") {
-        setMensajeTexto2('');
+      if (textoPersonalizado2.trim() !== '') {
+        setTexto2Cache(textoPersonalizado2);
       }
+      setTextoPersonalizado2('');
+    } else {
+      setTextoPersonalizado2(texto2Cache);
     }
   }, [formatoMensaje]);
 
