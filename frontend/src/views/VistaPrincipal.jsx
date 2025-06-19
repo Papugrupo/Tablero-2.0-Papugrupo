@@ -397,7 +397,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     if (isConnected) {
       try {
         let mensajeAPublicar;
-
+        const topicoTablero = tableroInfo.topicoTablero;
         if (formatoMensaje === "json") {
           // Formato JSON
           mensajeAPublicar = {
@@ -406,7 +406,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             velocidad: velocidadPersonalizada,
             animacion: animacionPersonalizada
           };
-          publish('mensaje/actualizar', JSON.stringify(mensajeAPublicar));
+          publish(topicoTablero, JSON.stringify(mensajeAPublicar));
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
@@ -415,8 +415,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           });
         } else {
           // Formato texto plano
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}`;
-          publish('mensaje/actualizar', mensajeAPublicar);
+          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
+          publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
