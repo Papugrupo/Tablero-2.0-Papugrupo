@@ -415,7 +415,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           });
         } else {
           // Formato texto plano
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
+          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}`;
           publish('mensaje/actualizar', mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
@@ -634,23 +634,23 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     const confirmacion = confirm("¿Seguro que desea eliminar este tablero? Esta acción no se puede deshacer.");
 
     if (confirmacion) {
-        console.log("El usuario confirmó la eliminación.");
-        const res = await borrarTablero({idTablero: tableroInfo.idTablero});
-        if (res) {
-            window.location.reload();
-        } else {
-            showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
-        }
+      console.log("El usuario confirmó la eliminación.");
+      const res = await borrarTablero({ idTablero: tableroInfo.idTablero });
+      if (res) {
+        window.location.reload();
+      } else {
+        showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
+      }
 
     } else {
 
-        console.log("El usuario canceló la eliminación.");
+      console.log("El usuario canceló la eliminación.");
     }
-};
+  };
 
   return (
     <div className="min-h-screen bg-light text-darkNeutral">
-      <Header/>
+      <Header />
 
       <main className="pt-4 sm:pt-6 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
@@ -851,187 +851,201 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           </button>
         </div>
         <div className="flex flex-row space-x-4 mt-6 sm:mt-8">
-        {/* Columna par los Mensajes de la sesión*/}
-        <div className="p-6 pt-[-6] bg-gray-900 min-h-[15vh] text-white rounded-2xl w-2/5">
-          <h1 className="text-xl mb-4">Mensajes Enviados</h1>
-          <HistMensajes mensajes={historialMensajes} />
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md w-3/5">
-          <div className="flex flex-col sm:flex-row sm:items-center mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
-            <button
-              onClick={toggleModoPersonalizado}
-              className={`mt-2 sm:mt-0 sm:ml-4 px-3 sm:px-4 py-1 rounded-full text-sm ${modoPersonalizado
-                ? 'bg-[#109d95] text-white'
-                : 'bg-gray-200 text-gray-700'
-                }`}
-            >
-              {modoPersonalizado ? 'Activado' : 'Desactivado'}
-            </button>
+          {/* Columna par los Mensajes de la sesión*/}
+          <div className="p-6 pt-[-6] bg-gray-900 min-h-[15vh] text-white rounded-2xl w-2/5">
+            <h1 className="text-xl mb-4">Mensajes Enviados</h1>
+            <HistMensajes mensajes={historialMensajes} />
           </div>
 
-          {modoPersonalizado && (
-            <div className="space-y-4">
-              <div>
-                {formatoMensaje === "plano" ? (
-                  // Modo texto plano: solo un campo de texto
-                  <>
-                    <label htmlFor="textoPersonalizado" className="block text-sm font-medium text-gray-700 mb-1">
-                      Texto a mostrar:
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        id="textoPersonalizado"
-                        value={textoPersonalizado1}
-                        onChange={(e) => {
-                          const nuevoTexto = e.target.value;
-                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
-                          if (nuevoTexto.length <= limiteActual) {
-                            setTextoPersonalizado1(nuevoTexto);
-                            setTextoPersonalizado2(''); // Limpiamos la segunda línea
-                          }
-                        }}
-                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
-                        placeholder="Escribe tu mensaje aquí..."
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                      />
-                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
-                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                          Máx: 11 car.
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                      <span className="text-gray-500">
-                        Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
-                      </span>
-                      {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
-                        <span className="text-red-500">Límite alcanzado</span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  // Modo JSON: dos líneas de texto
-                  <>
-                    <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
-                      Línea 1:
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        id="textoPersonalizado1"
-                        value={textoPersonalizado1}
-                        onChange={(e) => {
-                          const nuevoTexto = e.target.value;
-                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
-                          if (nuevoTexto.length <= limiteActual) {
-                            setTextoPersonalizado1(nuevoTexto);
-                          }
-                        }}
-                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
-                        placeholder="Escribe la primera línea aquí..."
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                      />
-                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
-                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                          Máx: 11 car.
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                      <span className="text-gray-500">
-                        Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
-                      </span>
-                      {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
-                        <span className="text-red-500">Límite alcanzado</span>
-                      )}
-                    </div>
-
-                    <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-3">
-                      Línea 2:
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        id="textoPersonalizado2"
-                        value={textoPersonalizado2}
-                        onChange={(e) => {
-                          const nuevoTexto = e.target.value;
-                          const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
-                          if (nuevoTexto.length <= limiteActual) {
-                            setTextoPersonalizado2(nuevoTexto);
-                          }
-                        }}
-                        maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
-                        placeholder="Escribe la segunda línea aquí (opcional)..."
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                      />
-                      {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
-                        <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                          Máx: 11 car.
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                      <span className="text-gray-500">
-                        Caracteres: {textoPersonalizado2.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
-                      </span>
-                      {textoPersonalizado2.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
-                        <span className="text-red-500">Límite alcanzado</span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                    Velocidad:
-                  </label>
-                  <select
-                    id="velocidadPersonalizada"
-                    value={velocidadPersonalizada}
-                    onChange={(e) => setVelocidadPersonalizada(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                  >
-                    {opcionesVelocidad.map(opcion => (
-                      <option key={opcion} value={opcion}>{opcion}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                    Animación:
-                  </label>
-                  <select
-                    id="animacionPersonalizada"
-                    value={animacionPersonalizada}
-                    onChange={(e) => setAnimacionPersonalizada(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                  >
-                    {ANIMACIONES.map(anim => (
-                      <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md w-3/5">
+            <div className="flex flex-col sm:flex-row sm:items-center mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
               <button
-                onClick={actualizarMensajePersonalizado}
-                disabled={(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected}
-                className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
+                onClick={toggleModoPersonalizado}
+                className={`mt-2 sm:mt-0 sm:ml-4 px-3 sm:px-4 py-1 rounded-full text-sm ${modoPersonalizado
+                  ? 'bg-[#109d95] text-white'
+                  : 'bg-gray-200 text-gray-700'
                   }`}
               >
-                ACTUALIZAR CON TEXTO PERSONALIZADO
+                {modoPersonalizado ? 'Activado' : 'Desactivado'}
               </button>
             </div>
-          )}
-        </div>
+
+            {modoPersonalizado && (
+              <div className="space-y-4">
+                <div>
+                  {formatoMensaje === "plano" ? (
+                    // Modo texto plano: solo un campo de texto
+                    <>
+                      <label htmlFor="textoPersonalizado" className="block text-sm font-medium text-gray-700 mb-1">
+                        Texto a mostrar:
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="textoPersonalizado"
+                          value={textoPersonalizado1}
+                          onChange={(e) => {
+                            const nuevoTexto = e.target.value;
+                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                            if (nuevoTexto.length <= limiteActual) {
+                              setTextoPersonalizado1(nuevoTexto);
+                              setTextoPersonalizado2(''); // Limpiamos la segunda línea
+                            }
+                          }}
+                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                          placeholder="Escribe tu mensaje aquí..."
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        />
+                      </div>
+
+                    </>
+                  ) : (
+                    // Modo JSON: dos líneas de texto
+                    <>
+                      <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
+                        Línea 1:
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="textoPersonalizado1"
+                          value={textoPersonalizado1}
+                          onChange={(e) => {
+                            const nuevoTexto = e.target.value;
+                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                            if (nuevoTexto.length <= limiteActual) {
+                              setTextoPersonalizado1(nuevoTexto);
+                            }
+                          }}
+                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                          placeholder="Escribe la primera línea aquí..."
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        />
+                        {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                          <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                            Máx: 11 car.
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                        <span className="text-gray-500">
+                          Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
+                        </span>
+                        {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
+                          <span className="text-red-500">Límite alcanzado</span>
+                        )}
+                      </div>
+
+                      <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-3">
+                        Línea 2:
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="textoPersonalizado2"
+                          value={textoPersonalizado2}
+                          onChange={(e) => {
+                            const nuevoTexto = e.target.value;
+                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                            if (nuevoTexto.length <= limiteActual) {
+                              setTextoPersonalizado2(nuevoTexto);
+                            }
+                          }}
+                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                          placeholder="Escribe la segunda línea aquí (opcional)..."
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        />
+                        {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                          <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                            Máx: 11 car.
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex justify-between mt-1 text-xs sm:text-sm">
+                        <span className="text-gray-500">
+                          Caracteres: {textoPersonalizado2.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
+                        </span>
+                        {textoPersonalizado2.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
+                          <span className="text-red-500">Límite alcanzado</span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div >
+
+                  {formatoMensaje === "plano" ? (
+                    <div >
+                      <div>
+                        <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                          Velocidad:
+                        </label>
+
+                      </div>
+                      <div>
+                        <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                          Velocidad:
+                        </label>
+                        <select
+                          id="velocidadPersonalizada"
+                          value={velocidadPersonalizada}
+                          onChange={(e) => setVelocidadPersonalizada(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        >
+                          {opcionesVelocidad.map(opcion => (
+                            <option key={opcion} value={opcion}>{opcion}</option>
+                          ))}
+                        </select>
+                      </div>
+                     
+                    </div>
+                  ) : (
+                    <div className="col-span-2">
+                     <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                          Velocidad:
+                        </label>
+                        <select
+                          id="velocidadPersonalizada"
+                          value={velocidadPersonalizada}
+                          onChange={(e) => setVelocidadPersonalizada(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        >
+                          {opcionesVelocidad.map(opcion => (
+                            <option key={opcion} value={opcion}>{opcion}</option>
+                          ))}
+                        </select>
+                       <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                        Animación:
+                      </label>
+                      <select
+                        id="animacionPersonalizada"
+                        value={animacionPersonalizada}
+                        onChange={(e) => setAnimacionPersonalizada(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                      >
+                        {ANIMACIONES.map(anim => (
+                          <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={actualizarMensajePersonalizado}
+                  disabled={(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected}
+                  className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
+                    }`}
+                >
+                  ACTUALIZAR CON TEXTO PERSONALIZADO
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 gap-3 sm:gap-4">
@@ -1285,8 +1299,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       )}
       <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
-      {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo}/>}
-      
+      {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo} />}
+
       {notification.show && (
         <div
           className={`fixed bottom-0 right-0 m-6 w-auto max-w-sm shadow-xl rounded-lg py-4 px-6 border-l-4 transition-all duration-300 ease-in-out ${notification.type === 'success' ? 'bg-white border-green-500' : notification.type === 'error' ? 'bg-white border-red-500' : 'bg-white border-yellow-500'}`}
