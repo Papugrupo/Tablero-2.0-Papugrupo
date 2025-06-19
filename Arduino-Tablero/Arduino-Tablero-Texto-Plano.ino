@@ -364,48 +364,56 @@ void callback(char* topic, byte* payload, unsigned int length) {
   msgBuffer[length] = '\0';
   Serial.println(msgBuffer);
 
-  // Convertimos el mensaje a String
+  // Convertir a String
   String mensaje = String(msgBuffer);
   Serial.print("Texto plano recibido: ");
   Serial.println(mensaje);
 
-  // Separar en partes usando '|'
-  int separador1 = mensaje.indexOf('|');
-  int separador2 = mensaje.indexOf('|', separador1 + 1);
+  // Separar por '|'
+  int sep1 = mensaje.indexOf('|');
+  int sep2 = mensaje.indexOf('|', sep1 + 1);
 
-  // Validar formato correcto
-  if (separador1 == -1 || separador2 == -1) {
+  if (sep1 == -1 || sep2 == -1) {
     Serial.println("Formato incorrecto. Se esperaban 3 partes separadas por '|'.");
     return;
   }
 
-  String parte1 = mensaje.substring(0, separador1);               // textoZona0
-  String parte2 = mensaje.substring(separador1 + 1, separador2);  // velocidad
-  String parte3 = mensaje.substring(separador2 + 1);              // animación
+  String textoRaw = mensaje.substring(0, sep1);                // Texto para zonas
+  String velocidadStr = mensaje.substring(sep1 + 1, sep2);     // Velocidad
+  String animacionStr = mensaje.substring(sep2 + 1);           // Animación
 
-  // Zona 0
-  textoZona0 = parte1;
-  textoZona1 = "";  // Ya no se usa
+  // Separar textoZona0 y textoZona1 si hay '&'
+  int amp = textoRaw.indexOf('&');
+  if (amp != -1) {
+    textoZona0 = textoRaw.substring(0, amp);
+    textoZona1 = textoRaw.substring(amp + 1);
+  } else {
+    textoZona0 = textoRaw;
+    textoZona1 = "";  // Vacía si no hay '&'
+  }
 
   // Velocidad
-  float factor = parte2.toFloat();
+  float factor = velocidadStr.toFloat();
   if (factor <= 0) factor = 1.0;
   velocidadActual = (uint16_t)(100.0 / factor);
   if (velocidadActual < 10) velocidadActual = 10;
   if (velocidadActual > 1000) velocidadActual = 1000;
 
   // Animación
-  mapAnimation(parte3.c_str());
+  mapAnimation(animacionStr.c_str());
 
   Serial.print("Z0: ");
   Serial.println(textoZona0);
+  Serial.print("Z1: ");
+  Serial.println(textoZona1);
   Serial.print("Velocidad: ");
   Serial.println(velocidadActual);
   Serial.print("Animación: ");
-  Serial.println(parte3);
+  Serial.println(animacionStr);
 
   nuevoMensaje = true;
 }
+
 
 
 // -------------------------
