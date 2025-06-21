@@ -355,66 +355,66 @@ void mapAnimation(const char* animStr) {
 // Callback MQTT
 // -------------------------
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Mensaje MQTT recibido ["); Serial.print(topic); Serial.println("]:");
+  Serial.print("Mensaje MQTT recibido [");
+  Serial.print(topic);
+  Serial.println("]:");
+
   char msgBuffer[length + 1];
   memcpy(msgBuffer, payload, length);
-  msgBuffer[length] = '\0'; 
-  Serial.println(msgBuffer); 
+  msgBuffer[length] = '\0';
+  Serial.println(msgBuffer);
 
-  StaticJsonDocument<1024> doc; 
-  DeserializationError error = deserializeJson(doc, msgBuffer); 
+  // Convertir a String
+  String mensaje = String(msgBuffer);
+  Serial.print("Texto plano recibido: ");
+  Serial.println(mensaje);
 
-  if (error) {
-    Serial.print("Error parseo JSON MQTT: "); 
-    Serial.println(error.c_str());
+  // Separar por '|'
+  int sep1 = mensaje.indexOf('|');
+  int sep2 = mensaje.indexOf('|', sep1 + 1);
 
-    String mensajeCrudo = String(msgBuffer);
-    textoZona0 = mensajeCrudo; // Mensaje como llegó
-    Serial.print("Mostrando mensaje como llegó: "); 
-    Serial.println(mensajeCrudo);
-
-    // Mostrar hora actual en textoZona1
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-      char horaStr[6]; // HH:MM + null
-      strftime(horaStr, sizeof(horaStr), "%H:%M", &timeinfo);
-      Serial.print("Hora del mensaje: ");
-      Serial.println(horaStr);
-      textoZona1 = "Hora del mensaje - " + String(horaStr);
-    } else {
-      textoZona1 = "Hora del mensaje - 00:00 "; // Fallback si no hay hora
-    }
-
-    mapAnimation("PA_SCROLL_LEFT"); 
-    velocidadActual = 100; 
-    nuevoMensaje = true;
+  if (sep1 == -1 || sep2 == -1) {
+    Serial.println("Formato incorrecto. Se esperaban 3 partes separadas por '|'.");
     return;
   }
 
-  String mqtt_t1 = doc["texto1"].as<String>();
-  String mqtt_t2 = doc["texto2"].as<String>();
+  String textoRaw = mensaje.substring(0, sep1);                // Texto para zonas
+  String velocidadStr = mensaje.substring(sep1 + 1, sep2);     // Velocidad
+  String animacionStr = mensaje.substring(sep2 + 1);           // Animación
 
-  // Identificar origen del mensaje para depuración o lógica específica si es necesario
-  textoZona0 = mqtt_t1.isEmpty() ? "App MQTT: Zona 0 vacía" : mqtt_t1;
-  textoZona1 = mqtt_t2.isEmpty() ? displayIpAddress : mqtt_t2;
-  
-  const char* velocidadStr = doc["velocidad"] | "x1.0";
-  float factor = 1.0;
-  if (velocidadStr[0] == 'x') { factor = atof(velocidadStr + 1); }
-  else { factor = atof(velocidadStr); }
+  // Separar textoZona0 y textoZona1 si hay '&'
+  int amp = textoRaw.indexOf('&');
+  if (amp != -1) {
+    textoZona0 = textoRaw.substring(0, amp);
+    textoZona1 = textoRaw.substring(amp + 1);
+  } else {
+    textoZona0 = textoRaw;
+    textoZona1 = "";  // Vacía si no hay '&'
+  }
+
+  // Velocidad
+  float factor = velocidadStr.toFloat();
   if (factor <= 0) factor = 1.0;
   velocidadActual = (uint16_t)(100.0 / factor);
   if (velocidadActual < 10) velocidadActual = 10;
   if (velocidadActual > 1000) velocidadActual = 1000;
 
-  const char* animacionRecibida = doc["animacion"] | "PA_SCROLL_LEFT";
-  mapAnimation(animacionRecibida);
+  // Animación
+  mapAnimation(animacionStr.c_str());
 
-  Serial.print("MQTT Procesado Z0: "); Serial.println(textoZona0);
-  Serial.print("MQTT Procesado Z1: "); Serial.println(textoZona1);
-  Serial.print("MQTT Velocidad: "); Serial.println(velocidadActual);
+  Serial.print("Z0: ");
+  Serial.println(textoZona0);
+  Serial.print("Z1: ");
+  Serial.println(textoZona1);
+  Serial.print("Velocidad: ");
+  Serial.println(velocidadActual);
+  Serial.print("Animación: ");
+  Serial.println(animacionStr);
+
   nuevoMensaje = true;
 }
+
+
 
 // -------------------------
 // Función para mostrar mensajes de estado y animarlos
