@@ -701,7 +701,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                 📝 Texto Plano
               </button>
             </div>
-            <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded border">
+            <div className="text-xs text-muted-themed bg-tertiary-bg px-3 py-2 rounded border border-border-base"> {/* Cambiados text-gray-500, bg-gray-50 y añadido border-border-base */}
               {formatoMensaje === "json" ? (
                 <span>Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
               ) : (
@@ -859,13 +859,13 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             <HistMensajes mensajes={historialMensajes} />
           </div>
 
-          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md w-3/5">
+          <div className="bg-card-bg p-3 sm:p-4 rounded-lg shadow-md w-3/5">
             <div className="flex flex-col sm:flex-row sm:items-center mb-4">
-              <h2 className="text-xl sm:text-2xl font-bold">Texto personalizado</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-text-darker">Texto personalizado</h2>
               <button
                 onClick={toggleModoPersonalizado}
                 className={`mt-2 sm:mt-0 sm:ml-4 px-3 sm:px-4 py-1 rounded-full text-sm ${modoPersonalizado
-                  ? 'bg-[#109d95] text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-200 text-gray-700'
                   }`}
               >
@@ -1066,17 +1066,17 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             LIMPIAR TABLERO
           </button>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4">Mensajes Guardados</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mt-8 sm:mt-10 mb-3 sm:mb-4 text-text-darker">Mensajes Guardados</h2>
         {cargando && !error && mensajes.length === 0 ? (
-          <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">Cargando mensajes...</p></div>
+          <div className="text-center py-4 bg-card-bg rounded-lg shadow-md"><p className="text-text-medium">Cargando mensajes...</p></div>
         ) : error ? (
-          <div className="text-center py-4 bg-red-100 border border-red-400 text-red-700 rounded-lg shadow-md"><p>{error}</p></div>
+          <div className="text-center py-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 rounded-lg shadow-md"><p>{error}</p></div>
         ) : mensajes.length === 0 ? (
-          <div className="text-center py-4 bg-white rounded-lg shadow-md"><p className="text-gray-600">No hay mensajes guardados para este tablero.</p></div>
+          <div className="text-center py-4 bg-card-bg rounded-lg shadow-md"><p className="text-text-medium">No hay mensajes guardados para este tablero.</p></div>
         ) : (
-          <div className="overflow-x-auto bg-white rounded-lg shadow-md">
-            <table className="w-full text-left">
-              <thead className="bg-[#109d95] text-white">
+          <div className="overflow-x-auto bg-card-bg rounded-lg shadow-md">
+            <table className="w-full text-left text-input-text">
+              <thead className="bg-primary text-white">
                 <tr className="text-center">
                   <th className="py-2 px-2 sm:px-4">Selección</th>
                   <th className="py-2 px-2 sm:px-4">Creado por</th>
@@ -1089,11 +1089,11 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                 {mensajes.map((msg, idx) => (
                   <tr
                     key={msg.idMensaje || idx}
-                    className={`border-t border-gray-200 hover:bg-[#f4f9f9] cursor-pointer ${seleccionado === idx ? 'bg-blue-50' : ''}`}
+                    className={`border-t border-border-base hover:bg-tertiary-bg cursor-pointer ${seleccionado === idx ? 'bg-primary/10 dark:bg-primary/20' : ''}`}
                     onClick={() => seleccionarMensaje(idx)}
                   >
                     <td className="py-2 px-2 sm:px-4 text-center">
-                      <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-[#109d95] border-[#109d95]' : 'border-gray-400'}`} />
+                      <div className={`w-4 sm:w-5 h-4 sm:h-5 rounded-full border-2 mx-auto ${seleccionado === idx ? 'bg-primary border-primary' : 'border-border-base'}`} />
                     </td>
                     <td className="px-2 sm:px-4 text-xs sm:text-sm">{msg.Usuario?.nombre || "Desconocido"}</td>
                     <td className="px-2 sm:px-4 text-xs sm:text-sm">{mostrarContenidoMensaje(msg.mensaje)}</td>
