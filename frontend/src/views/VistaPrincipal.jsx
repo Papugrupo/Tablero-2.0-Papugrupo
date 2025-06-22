@@ -741,57 +741,57 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
               </div>
 
               {tableroInfo && tableroSeleccionado && (
-                <div className="flex-1 bg-white rounded-lg shadow-md p-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-800">{tableroInfo.nombreTablero}</h3>
-                      <p className="text-xs text-gray-500">
-                        Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                        {tableroInfo.Mensajes?.length || 0} mensajes guardados
-                      </span>
-                      <p className="text-xs text-gray-500 mt-1">
-                        ID: {tableroInfo.idTablero.substring(0, 8)}...
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-gray-600">Información de conexión:</p>
-                      <div className="flex gap-4">
-                        <button onClick={() => setModalTableroOpenEdit(true)} className="bg-primary hover:bg-secondary text-light text-xs px-2 py-1 rounded transition-colors duration-300">Modificar</button>
-                        <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
-                      </div>
-                    </div>
-                    <div className="mt-1 grid grid-cols-1 gap-1">
-                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-gray-700">IP:</span>
-                          <span className="text-xs text-gray-800">{tableroInfo.ipTablero || "No configurada"}</span>
+                <div className="flex-1 bg-light rounded-lg shadow-md p-3">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h3 className="text-base font-semibold text-text-darker">{tableroInfo.nombreTablero}</h3>
+                            <p className="text-xs text-text-muted">
+                                Grupo: {tableroInfo.Grupo?.nombreGrupo || "Sin grupo"}
+                            </p>
+                            <p className="text-xs text-text-muted mt-0.5">
+                                Creado el: {new Date(tableroInfo.creadoEn).toLocaleDateString()}
+                            </p>
                         </div>
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-gray-700">Protocolo:</span>
-                          <span className="text-xs text-gray-800">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                        <div className="flex flex-col items-end">
+                            <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                {tableroInfo.Mensajes?.length || 0} mensajes guardados
+                            </span>
+                            <p className="text-xs text-text-muted mt-1">
+                                ID: {tableroInfo.idTablero.substring(0, 8)}...
+                            </p>
                         </div>
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-gray-700">Tópico MQTT:</span>
-                          <span className="text-xs text-gray-800">{tableroInfo.topicoTablero || "No configurado"}</span>
-                        </div>
-                      </div>
                     </div>
-                  </div>
+                    <div className="mt-2 pt-2 border-t border-border-base">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium text-input-text">Información de conexión:</p>
+                            <div className="flex gap-4">
+                                <button onClick={() => setModalTableroOpenEdit(true)} className="bg-primary hover:bg-primary-dark text-white text-xs px-2 py-1 rounded transition-colors duration-300">Modificar</button>
+                                <button onClick={() => handleDeleteTablero()} className="bg-[#9d101a] hover:bg-[#800b13] text-white text-xs px-2 py-1 rounded">Eliminar</button>
+                            </div>
+                        </div>
+                        <div className="mt-1 grid grid-cols-1 gap-1">
+                            <div className="bg-input-bg p-2 rounded border border-border-base">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-input-text">IP:</span>
+                                    <span className="text-xs text-text-darker">{tableroInfo.ipTablero || "No configurada"}</span>
+                                </div>
+                            </div>
+                            <div className="bg-input-bg p-2 rounded border border-border-base">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-input-text">Protocolo:</span>
+                                    <span className="text-xs text-text-darker">{tableroInfo.protocoloTablero || "No configurado"}</span>
+                                </div>
+                            </div>
+                            <div className="bg-input-bg p-2 rounded border border-border-base">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-input-text">Tópico MQTT:</span>
+                                    <span className="text-xs text-text-darker">{tableroInfo.topicoTablero || "No configurado"}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              )}
+            )}
             </div>
           </div>
 
@@ -1118,187 +1118,205 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
       {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)" }}>
-          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Mensaje</h3>
-            <form onSubmit={enviarNuevoMensaje}>
-              {/* Formato de mensaje actual (informativo) */}
-              <div className="bg-gray-50 p-2 rounded mb-3 text-xs text-gray-600 flex items-center">
-                <span className="font-medium mr-1">Formato actual:</span>
-                {formatoMensaje === "json" ?
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded">JSON (dos líneas)</span> :
-                  <span className="px-2 py-0.5 bg-green-100 text-green-800 font-medium rounded">Texto plano (una línea)</span>
-                }
-              </div>
-
-              {/* Campos de texto que cambian según el formato */}
-              {formatoMensaje === "plano" ? (
-                // Modo texto plano: una línea
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto">Mensaje</label>
-                  <div className="relative">
-                    <input
-                      id="mensaje-texto"
-                      type="text"
-                      className="w-full border rounded px-2 py-1"
-                      value={nuevoTexto1}
-                      onChange={(e) => {
-                        const nuevoTexto = e.target.value;
-                        const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
-                        if (nuevoTexto.length <= limiteActual) {
-                          setNuevoTexto1(nuevoTexto);
+            {/* CAMBIO CLAVE: Fondo del modal con bg-light */}
+            <div className="bg-light p-4 sm:p-6 rounded-lg w-full max-w-md">
+                {/* Título del modal con text-text-darker */}
+                <h3 className="text-lg sm:text-xl font-bold mb-4 text-text-darker">Nuevo Mensaje</h3>
+                <form onSubmit={enviarNuevoMensaje}>
+                    {/* Formato de mensaje actual (informativo) */}
+                    {/* CAMBIO: Fondo y texto usando bg-input-bg y text-input-text */}
+                    <div className="bg-input-bg p-2 rounded mb-3 text-xs text-input-text flex items-center">
+                        <span className="font-medium mr-1">Formato actual:</span>
+                        {formatoMensaje === "json" ?
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded">JSON (dos líneas)</span> :
+                            <span className="px-2 py-0.5 bg-green-100 text-green-800 font-medium rounded">Texto plano (una línea)</span>
                         }
-                      }}
-                      placeholder="Escribe tu mensaje aquí"
-                      maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
-                    />
-                    {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
-                      <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                        Máx: 11 car.
-                      </span>
+                    </div>
+
+                    {/* Campos de texto que cambian según el formato */}
+                    {formatoMensaje === "plano" ? (
+                        // Modo texto plano: una línea
+                        <div className="mb-4">
+                            {/* Label con text-input-text */}
+                            <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-texto">Mensaje</label>
+                            <div className="relative">
+                                <input
+                                    id="mensaje-texto"
+                                    type="text"
+                                    // CAMBIO: Input con bg-input-bg, border-border-base, text-input-text
+                                    className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                                    value={nuevoTexto1}
+                                    onChange={(e) => {
+                                        const nuevoTexto = e.target.value;
+                                        const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                                        if (nuevoTexto.length <= limiteActual) {
+                                            setNuevoTexto1(nuevoTexto);
+                                        }
+                                    }}
+                                    placeholder="Escribe tu mensaje aquí"
+                                    maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                                />
+                                {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                                    <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                                        Máx: 11 car.
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex justify-between mt-1">
+                                {/* CAMBIO: Contador de caracteres con text-text-muted */}
+                                <span className="text-xs text-text-muted">
+                                    {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                                </span>
+                                {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                                    <span className="text-xs text-error">Límite alcanzado</span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        // Modo JSON: dos líneas
+                        <>
+                            <div className="mb-4">
+                                {/* Label con text-input-text */}
+                                <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-texto1">Línea 1</label>
+                                <div className="relative">
+                                    <input
+                                        id="mensaje-texto1"
+                                        type="text"
+                                        // CAMBIO: Input con bg-input-bg, border-border-base, text-input-text
+                                        className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                                        value={nuevoTexto1}
+                                        onChange={(e) => {
+                                            const nuevoTexto = e.target.value;
+                                            const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                                            if (nuevoTexto.length <= limiteActual) {
+                                                setNuevoTexto1(nuevoTexto);
+                                            }
+                                        }}
+                                        placeholder="Primera línea de texto"
+                                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                                    />
+                                    {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                                            Máx: 11 car.
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                    {/* CAMBIO: Contador de caracteres con text-text-muted */}
+                                    <span className="text-xs text-text-muted">
+                                        {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                                    </span>
+                                    {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                                        <span className="text-xs text-error">Límite alcanzado</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                {/* Label con text-input-text */}
+                                <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-texto2">Línea 2</label>
+                                <div className="relative">
+                                    <input
+                                        id="mensaje-texto2"
+                                        type="text"
+                                        // CAMBIO: Input con bg-input-bg, border-border-base, text-input-text
+                                        className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                                        value={nuevoTexto2}
+                                        onChange={(e) => {
+                                            const nuevoTexto = e.target.value;
+                                            const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
+                                            if (nuevoTexto.length <= limiteActual) {
+                                                setNuevoTexto2(nuevoTexto);
+                                            }
+                                        }}
+                                        placeholder="Segunda línea de texto"
+                                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
+                                    />
+                                    {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
+                                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                                            Máx: 11 car.
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                    {/* CAMBIO: Contador de caracteres con text-text-muted */}
+                                    <span className="text-xs text-text-muted">
+                                        {nuevoTexto2.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
+                                    </span>
+                                    {nuevoTexto2.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
+                                        <span className="text-xs text-error">Límite alcanzado</span>
+                                    )}
+                                </div>
+                            </div>
+                        </>
                     )}
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-500">
-                      {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
-                    </span>
-                    {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
-                      <span className="text-xs text-red-500">Límite alcanzado</span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                // Modo JSON: dos líneas
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto1">Línea 1</label>
-                    <div className="relative">
-                      <input
-                        id="mensaje-texto1"
-                        type="text"
-                        className="w-full border rounded px-2 py-1"
-                        value={nuevoTexto1}
-                        onChange={(e) => {
-                          const nuevoTexto = e.target.value;
-                          const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
-                          if (nuevoTexto.length <= limiteActual) {
-                            setNuevoTexto1(nuevoTexto);
-                          }
-                        }}
-                        placeholder="Primera línea de texto"
-                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
-                      />
-                      {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
-                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                          Máx: 11 car.
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">
-                        {nuevoTexto1.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
-                      </span>
-                      {nuevoTexto1.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
-                        <span className="text-xs text-red-500">Límite alcanzado</span>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1" htmlFor="mensaje-texto2">Línea 2</label>
-                    <div className="relative">
-                      <input
-                        id="mensaje-texto2"
-                        type="text"
-                        className="w-full border rounded px-2 py-1"
-                        value={nuevoTexto2}
-                        onChange={(e) => {
-                          const nuevoTexto = e.target.value;
-                          const limiteActual = obtenerLimiteCaracteres(nuevaAnimacion);
-                          if (nuevoTexto.length <= limiteActual) {
-                            setNuevoTexto2(nuevoTexto);
-                          }
-                        }}
-                        placeholder="Segunda línea de texto"
-                        maxLength={obtenerLimiteCaracteres(nuevaAnimacion)}
-                      />
-                      {ANIMACIONES_LIMITE_REDUCIDO.includes(nuevaAnimacion) && (
-                        <span className="absolute right-2 top-1 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                          Máx: 11 car.
-                        </span>
-                      )}
+                    <div className="mb-4">
+                        {/* Label con text-input-text */}
+                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-velocidad">Velocidad</label>
+                        {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
+                        <select id="mensaje-velocidad" className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
+                            <option value="">Seleccionar velocidad</option>
+                            {opcionesVelocidad.map(v => v.replace('x', '')).map(val => <option key={val} value={val}>{val}</option>)}
+                        </select>
                     </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">
-                        {nuevoTexto2.length}/{obtenerLimiteCaracteres(nuevaAnimacion)}
-                      </span>
-                      {nuevoTexto2.length >= obtenerLimiteCaracteres(nuevaAnimacion) && (
-                        <span className="text-xs text-red-500">Límite alcanzado</span>
-                      )}
+
+                    <div className="mb-4">
+                        {/* Label con text-input-text */}
+                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-animacion">Animación</label>
+                        {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
+                        <select
+                            id="mensaje-animacion"
+                            className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                            value={nuevaAnimacion}
+                            onChange={(e) => {
+                                setNuevaAnimacion(e.target.value);
+                                // Truncar el texto si es necesario al cambiar a animación con límite reducido
+                                if (ANIMACIONES_LIMITE_REDUCIDO.includes(e.target.value)) {
+                                    if (nuevoTexto1.length > LIMITE_CARACTERES_REDUCIDO) {
+                                        setNuevoTexto1(nuevoTexto1.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                                        showNotification(
+                                            'warning',
+                                            'Texto ajustado',
+                                            `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
+                                        );
+                                    }
+                                    if (formatoMensaje === "json" && nuevoTexto2.length > LIMITE_CARACTERES_REDUCIDO) {
+                                        setNuevoTexto2(nuevoTexto2.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                                    }
+                                }
+                            }}
+                        >
+                            {ANIMACIONES.map(anim => (
+                                <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                            ))}
+                        </select>
                     </div>
-                  </div>
-                </>
-              )}
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-velocidad">Velocidad</label>
-                <select id="mensaje-velocidad" className="w-full border rounded px-2 py-1" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
-                  <option value="">Seleccionar velocidad</option>
-                  {opcionesVelocidad.map(v => v.replace('x', '')).map(val => <option key={val} value={val}>{val}</option>)}
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1" htmlFor="mensaje-animacion">Animación</label>
-                <select
-                  id="mensaje-animacion"
-                  className="w-full border rounded px-2 py-1"
-                  value={nuevaAnimacion}
-                  onChange={(e) => {
-                    setNuevaAnimacion(e.target.value);
-                    // Truncar el texto si es necesario al cambiar a animación con límite reducido
-                    if (ANIMACIONES_LIMITE_REDUCIDO.includes(e.target.value)) {
-                      if (nuevoTexto1.length > LIMITE_CARACTERES_REDUCIDO) {
-                        setNuevoTexto1(nuevoTexto1.substring(0, LIMITE_CARACTERES_REDUCIDO));
-                        showNotification(
-                          'warning',
-                          'Texto ajustado',
-                          `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
-                        );
-                      }
-                      if (formatoMensaje === "json" && nuevoTexto2.length > LIMITE_CARACTERES_REDUCIDO) {
-                        setNuevoTexto2(nuevoTexto2.substring(0, LIMITE_CARACTERES_REDUCIDO));
-                      }
-                    }
-                  }}
-                >
-                  {ANIMACIONES.map(anim => (
-                    <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm"
-                  onClick={() => setModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
-                  disabled={(formatoMensaje === "plano" ? nuevoTexto1.trim() === "" :
-                    (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""))
-                    || !nuevaVelocidad || !tableroSeleccionado}
-                >
-                  Agregar
-                </button>
-              </div>
-            </form>
-          </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                        {/* Botón Cancelar con clases de botón secundario */}
+                        <button
+                            type="button"
+                            className="px-3 sm:px-4 py-2 rounded bg-button-secondary-bg text-button-secondary-text hover:bg-button-secondary-bg-hover transition-colors text-sm"
+                            onClick={() => setModalOpen(false)}
+                        >
+                            Cancelar
+                        </button>
+                        {/* Botón Agregar con clases de botón primario */}
+                        <button
+                            type="submit"
+                            className="px-3 sm:px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark transition-colors text-sm"
+                            disabled={(formatoMensaje === "plano" ? nuevoTexto1.trim() === "" :
+                                (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""))
+                                || !nuevaVelocidad || !tableroSeleccionado}
+                        >
+                            Agregar
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-      )}
+    )}
       <Loading isOpen={cargando} />
       {modalTableroOpen && <ModalNewTablero setModalOpen={setModalTableroOpen} obtenerTableros={obtenerIdTableros} />}
       {modalTableroOpenEdit && <ModalEditTablero setModalOpen={setModalTableroOpenEdit} obtenerTableros={obtenerIdTableros} tableroInfo={tableroInfo} setTableroInfo={setTableroInfo} />}

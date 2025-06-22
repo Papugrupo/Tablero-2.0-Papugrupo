@@ -39,9 +39,9 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
         setError("Ya existe un tablero con este nombre. Por favor, elige otro.");
         return;
       }
-
+      
       try{
-          const res = await crearTablero({
+          const res = await crearTablero({ 
             nombreTablero: nombreTablero.trim(),
             ipTablero: ipTablero.trim(),
             topicoTablero: topicoTablero.trim(),
@@ -63,8 +63,8 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
           className="fixed inset-0 flex items-center justify-center z-50 px-4"
           style={{ backgroundColor: "rgba(0,0,0,0.75)" }} // Este es el overlay semitransparente, déjalo así
         >
-          {/* Fondo del modal manual: bg-white en modo normal, dark:bg-gray-800 en modo oscuro */}
-          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg w-full max-w-md">
+          {/* CAMBIO CLAVE: Usamos bg-light para que sea igual que el fondo de la vista principal */}
+          <div className="bg-light p-4 sm:p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg sm:text-xl font-bold mb-4 text-text-darker">Nuevo Tablero</h3>
             <form onSubmit={handleAddTablero}>
               {/* Nombre de tablero */}
@@ -75,7 +75,7 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                   type="text"
                   className={`w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text ${error ? 'border-red-500' : ''}`}
                   value={nombreTablero}
-                  onChange={(e) =>{
+                  onChange={(e) =>{ 
                     setNombreTablero(e.target.value)
                     setError("");
                   }}
@@ -102,7 +102,7 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                   disabled
                 />
               </div>
-
+              
               {/* Ip y puerto de tablero */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1 text-input-text">Ip y puerto de tablero</label>
@@ -120,7 +120,7 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                   </span>
                 </div>
               </div>
-
+              
               {/* Topico tablero */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1 text-input-text">Tópico de tablero</label>
