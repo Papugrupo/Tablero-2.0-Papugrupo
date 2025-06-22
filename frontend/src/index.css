@@ -1,6 +1,11 @@
+/* src/index.css */
+
 @import "tailwindcss";
 
+/* --- 1. Definición de Variables CSS para Temas --- */
+
 :root {
+  --color-bg-base: #f7fafc;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -9,74 +14,267 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Colores base del proyecto */
-  --color-primary: #109d95;
-  /* Azul claro (Base) */
-  --color-secondary: #AFCBFA;
-  /* Azul más saturado (para hovers o elementos secundarios) */
-  --color-dark: #508EF5;
-  /* Azul vibrante (para sombreado o bordes) */
-  --color-error: #FBE8DA;
-  /* Naranja pálido (para advertencias o errores) */
-  --color-light: #F4F9FB;
-  /* Color suave para fondos o elementos neutros */
-  --color-darkNeutral: #1F2A44;
+  /* Colores base del proyecto (Modo Claro) */
+  --color-primary: #109d95;  /* Teal */
+  --color-secondary: #AFCBFA; /* Azul más claro */
+  --color-dark: #508EF5;     /* Azul vibrante */
+  --color-error: #FBE8DA;    /* Naranja pálido */
+  --color-light: #F4F9FB;    /* Blanco/Gris muy claro */
+  --color-darkNeutral: #1F2A44; /* Azul oscuro casi negro */
 
+  /* Colores específicos de la marquesina principal para Modo Claro */
+  --marquee-bg: black;
+  --marquee-border-color: #ccc;
+  --marquee-shadow-color: #000;
+  --marquee-text-color: #dc2626; /* Rojo brillante */
+  --marquee-text-shadow: #ff0000;
+
+  /* NUEVAS VARIABLES para la marquesina del LOGIN (Modo Claro) */
+  --login-marquee-container-border: #0f766e;
+  --login-marquee-container-shadow: #0f766e;
+  --login-marquee-container-bg: #000;
+  --login-marquee-text-color: #14b8a6;
+  --login-marquee-text-shadow-strong: #14b8a6;
+  --login-marquee-text-shadow-weak: rgba(20, 184, 166, 0.6);
+  --login-marquee-text-before-color: #0f766e;
+  --login-marquee-text-after-color: #14b8a6;
 }
 
+/* Reglas para el Modo Oscuro */
+[data-theme='dark'] {
+  /* Sobreescribe las variables de color del proyecto para el Modo Oscuro */
+  --color-primary: #4CAF50;
+  --color-secondary: #8BC34A;
+  --color-dark: #A5D6A7;
+  --color-error: #EF5350;
+  --color-light: #212121;
+  --color-darkNeutral: #E0E0E0;
+
+  /* Colores específicos de la marquesina principal para Modo Oscuro */
+  --marquee-bg: #1a1a1a;
+  --marquee-border-color: #555;
+  --marquee-shadow-color: #333;
+  --marquee-text-color: #66ccff;
+  --marquee-text-shadow: #0088cc;
+
+  /* NUEVAS VARIABLES para la marquesina del LOGIN (Modo Oscuro) */
+  --login-marquee-container-border: #2ecc71;
+  --login-marquee-container-shadow: #27ae60;
+  --login-marquee-container-bg: #1a1a1a;
+  --login-marquee-text-color: #90ee90;
+  --login-marquee-text-shadow-strong: #76e176;
+  --login-marquee-text-shadow-weak: rgba(144, 238, 144, 0.6);
+  --login-marquee-text-before-color: #5cb85c;
+  --login-marquee-text-after-color: #90ee90;
+}
+
+/* --- 2. Estilos Globales --- */
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* ¡Aquí es donde añadimos !important para asegurar que se respete! */
+  background-color: var(--color-light) !important;
+  color: var(--color-darkNeutral) !important; /* También para el color de texto general */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* 🚀 Clases utilitarias personalizadas */
+
+/* --- 3. Estilos de la Marquesina Principal (Adaptados con variables) --- */
+.marqueee-container {
+  position: relative;
+  overflow: hidden;
+  height: 12vh;
+  min-height: 70px;
+  width: 100%;
+  background-color: var(--marquee-bg);
+  border: 8px solid var(--marquee-border-color);
+  border-radius: 0.5rem;
+  box-shadow: inset 0 0 10px var(--marquee-shadow-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.marqueee-text {
+  position: absolute;
+  white-space: nowrap;
+  color: var(--marquee-text-color);
+  font-family: 'Courier New', monospace;
+  font-size: clamp(32px, 8vw, 60px);
+  font-weight: bold;
+  text-shadow: 0 0 10px var(--marquee-text-shadow);
+  will-change: transform;
+  line-height: 1.2;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 100%;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.marqueee-text-second {
+  color: var(--marquee-text-color);
+  text-shadow: 0 0 10px var(--marquee-text-shadow);
+}
+
+@keyframes blink-caret {
+  0%, 100% { border-right: 4px solid transparent; }
+  50% { border-right: 4px solid var(--marquee-text-color); }
+}
+
+@keyframes marqueee-left { 0% { left: 100%; } 100% { left: -100%; } }
+@keyframes marqueee-right { 0% { right: 100%; left: auto; } 100% { right: -100%; left: auto; } }
+@keyframes marqueee-up { 0% { top: 100%; left: 20px; transform: translateY(0); } 100% { top: -50%; left: 20px; transform: translateY(0); } }
+@keyframes marqueee-down { 0% { top: -50%; left: 20px; transform: translateY(0); } 100% { top: 100%; left: 20px; transform: translateY(0); } }
+@keyframes marqueee-wipe { 0% { clip-path: inset(0 100% 0 0); left: 20px; } 100% { clip-path: inset(0 0 0 0); left: 20px; } }
+@keyframes marqueee-closing { 0% { clip-path: inset(0 0 0 0); left: 20px; } 50% { clip-path: inset(0 50% 0 50%); left: 20px; } 100% { clip-path: inset(0 0 0 0); left: 20px; } }
+@keyframes marqueee-opening { 0% { clip-path: inset(0 50% 0 50%); left: 20px; } 100% { clip-path: inset(0 0 0 0); left: 20px; } }
+@keyframes marqueee-fade { 0% { opacity: 1; left: 20px; } 50% { opacity: 0; left: 20px; } 100% { opacity: 1; left: 20px; } }
+
+.marqueee-left { animation-name: marqueee-left; left: 100%; transform: translateY(-50%); }
+.marqueee-right { animation-name: marqueee-right; right: 100%; left: auto; transform: translateY(-50%); }
+.marqueee-up { animation-name: marqueee-up; top: 100%; left: 20px; transform: none; }
+.marqueee-down { animation-name: marqueee-down; top: -50%; left: 20px; transform: none; }
+.marqueee-wipe { animation-name: marqueee-wipe; animation-timing-function: steps(30); padding-left: 0; left: 20px; transform: translateY(-50%); }
+.marqueee-closing { animation-name: marqueee-closing; padding-left: 0; left: 20px; transform: translateY(-50%); }
+.marqueee-opening { animation-name: marqueee-opening; padding-left: 0; left: 20px; transform: translateY(-50%); }
+.marqueee-fade { animation-name: marqueee-fade; padding-left: 0; left: 20px; transform: translateY(-50%); }
+.marqueee-no-effect { animation: none !important; padding-left: 0; left: 20px; transform: translateY(-50%); }
+
+
+/* --- 4. Estilos de la Marquesina del LOGIN --- */
+.marquee-container {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid var(--login-marquee-container-border);
+  box-shadow: 0 0 15px var(--login-marquee-container-shadow) inset;
+  background-color: var(--login-marquee-container-bg);
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.marquee-track {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 12s linear infinite;
+  position: relative;
+  will-change: transform;
+}
+
+.marquee-text {
+  display: inline-block;
+  color: var(--login-marquee-text-color);
+  font-family: 'Courier New', monospace;
+  font-size: 2rem;
+  padding: 0 2rem;
+  line-height: 1;
+  text-shadow:
+    0 0 5px var(--login-marquee-text-shadow-strong),
+    0 0 10px var(--login-marquee-text-shadow-strong),
+    0 0 20px var(--login-marquee-text-shadow-strong),
+    0 0 40px var(--login-marquee-text-shadow-weak);
+  position: relative;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.marquee-text::before,
+.marquee-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 2rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.marquee-text::before {
+  color: var(--login-marquee-text-before-color);
+  filter: blur(8px);
+  opacity: 0.6;
+  z-index: -1;
+  transition: color 0.3s ease;
+}
+
+.marquee-text::after {
+  color: var(--login-marquee-text-after-color);
+  filter: blur(2px);
+  opacity: 0.3;
+  z-index: -2;
+  transition: color 0.3s ease;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* --- 5. Clases Utilitarias Personalizadas (sin cambios, ya usan variables) --- */
 @layer utilities {
   .bg-primary {
     background-color: var(--color-primary);
+    transition: background-color 0.3s ease;
   }
 
   .bg-secondary {
     background-color: var(--color-secondary);
+    transition: background-color 0.3s ease;
   }
 
   .bg-dark {
     background-color: var(--color-dark);
+    transition: background-color 0.3s ease;
   }
 
   .bg-error {
     background-color: var(--color-error);
+    transition: background-color 0.3s ease;
   }
 
   .bg-light {
     background-color: var(--color-light);
+    transition: background-color 0.3s ease;
   }
 
   .bg-darkNeutral {
     background-color: var(--color-darkNeutral);
+    transition: background-color 0.3s ease;
   }
 
   .text-primary {
     color: var(--color-primary);
+    transition: color 0.3s ease;
   }
 
   .text-secondary {
     color: var(--color-secondary);
+    transition: color 0.3s ease;
   }
 
   .text-dark {
     color: var(--color-dark);
+    transition: color 0.3s ease;
   }
 
   .text-error {
     color: var(--color-error);
+    transition: color 0.3s ease;
   }
 
   .text-light {
     color: var(--color-light);
+    transition: color 0.3s ease;
   }
 
   .text-darkNeutral {
     color: var(--color-darkNeutral);
+    transition: color 0.3s ease;
   }
 }

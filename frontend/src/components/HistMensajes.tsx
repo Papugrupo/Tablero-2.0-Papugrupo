@@ -13,7 +13,7 @@ type Props = {
 
 export const HistMensajes: React.FC<Props> = ({ mensajes }) => {
   return (
-    <div className="bg-black text-green-400 font-mono p-4 text-sm rounded-lg shadow-inner h-96 overflow-y-auto overflow-x-hidden scrollbar-thin">
+    <div className="bg-black text-green-400 font-mono p-4 text-sm rounded-lg shadow-inner h-83 overflow-y-auto overflow-x-hidden scrollbar-thin">
       {mensajes.map((msg, index) => (
         <div
           key={index}

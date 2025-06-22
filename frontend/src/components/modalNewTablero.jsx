@@ -1,62 +1,101 @@
 import { useState } from "react";
-import { crearTablero } from "../services/tablero.service";
+import { crearTablero, obtenerTableros as serviceObtenerTableros} from "../services/tablero.service";
 
-const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
+const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
     const LIMITE_CARACTERES = 100;
 
     const [nombreTablero,setNombreTablero] = useState("")
     const [ipTablero, setIpTablero] = useState("");
     const [topicoTablero, setTopicoTablero] = useState("");
-    const [protocoloTablero] = useState("ws")
+    const [protocoloTablero] = useState("ws");
+    const [error, setError] = useState("");
 
     const handleAddTablero = async (e) =>{
       e.preventDefault();
-      const res = await crearTablero({ 
-        nombreTablero: nombreTablero.trim(),
-        ipTablero: ipTablero.trim(),
-        topicoTablero: topicoTablero.trim(),
-        protocoloTablero: protocoloTablero.trim()
-      });
+      setError("");
 
-      if (res){
-        obtenerTableros();
-        setModalOpen(false)
+      const trimmedNombreTablero = nombreTablero.trim();
+
+      if (trimmedNombreTablero === "") {
+        setError("El nombre del tablero no puede estar vacío.");
+        return;
+      }
+
+      let existingTableros = [];
+
+      try{
+        existingTableros = await serviceObtenerTableros();
+      } catch (error) {
+        console.error("Error al verificar tableros existentes:", error);
+        setError("Error al verificar tableros existentes.");
+        return;
+      }
+
+      const isDuplicated = existingTableros.some(
+        (tablero) => tablero.nombreTablero.trim().toLowerCase() === trimmedNombreTablero.toLowerCase()
+      );
+
+      if (isDuplicated) {
+        setError("Ya existe un tablero con este nombre. Por favor, elige otro.");
+        return;
+      }
+      
+      try{
+          const res = await crearTablero({ 
+            nombreTablero: nombreTablero.trim(),
+            ipTablero: ipTablero.trim(),
+            topicoTablero: topicoTablero.trim(),
+            protocoloTablero: protocoloTablero.trim()
+        });
+
+        if (res){
+          refreshTableros();
+          setModalOpen(false)
+        }
+      } catch (err) {
+        console.error("Error al crear tablero:", err);
+        setError("Error al crear tablero. Por favor, inténtalo de nuevo.");
       }
     }
 
     return(
         <div
           className="fixed inset-0 flex items-center justify-center z-50 px-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.75)" }} // Este es el overlay semitransparente, déjalo así
         >
-          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl font-bold mb-4">Nuevo Tablero</h3>
+          {/* CAMBIO CLAVE: Usamos bg-light para que sea igual que el fondo de la vista principal */}
+          <div className="bg-light p-4 sm:p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-lg sm:text-xl font-bold mb-4 text-text-darker">Nuevo Tablero</h3>
             <form onSubmit={handleAddTablero}>
               {/* Nombre de tablero */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Nombre de tablero</label>
+                <label className="block text-sm font-medium mb-1 text-input-text">Nombre de tablero</label>
                 <input
                   id="nombre-tablero"
                   type="text"
-                  className="w-full border rounded px-2 py-1"
+                  className={`w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text ${error ? 'border-red-500' : ''}`}
                   value={nombreTablero}
-                  onChange={(e) => setNombreTablero(e.target.value)}
+                  onChange={(e) =>{ 
+                    setNombreTablero(e.target.value)
+                    setError("");
+                  }}
                   placeholder="Nombre del tablero"
                   maxLength={LIMITE_CARACTERES}
                 />
                 <div className="flex justify-end mt-1">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-text-muted">
                     {nombreTablero.length}/{LIMITE_CARACTERES}
                   </span>
                 </div>
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
               </div>
               {/* Protocolo tablero */}
               <div className="mb-4 ">
-                <label className="block text-sm font-medium mb-1">Protocolo tablero</label>
+                <label className="block text-sm font-medium mb-1 text-input-text">Protocolo tablero</label>
                 <input
                   id="protocolo-tablero"
                   type="text"
-                  className=" w-1/4 bg-gray-200 rounded px-2 py-1"
+                  className="w-1/4 rounded px-2 py-1 bg-button-secondary-bg text-button-secondary-text"
                   value={protocoloTablero}
                   onChange={(e) => setNombreTablero(e.target.value)}
                   placeholder="ws por defecto"
@@ -66,17 +105,17 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
               
               {/* Ip y puerto de tablero */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Ip y puerto de tablero</label>
+                <label className="block text-sm font-medium mb-1 text-input-text">Ip y puerto de tablero</label>
                 <input
                   id="ip-tablero"
                   type="text"
-                  className="w-full border rounded px-2 py-1"
+                  className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
                   value={ipTablero}
                   onChange={(e) => setIpTablero(e.target.value)}
                   placeholder="123.456.789.123:12346"
                 />
                 <div className="flex justify-end mt-1">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-text-muted">
                     {ipTablero.length}/{21}
                   </span>
                 </div>
@@ -84,18 +123,18 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
               
               {/* Topico tablero */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Tópico de tablero</label>
+                <label className="block text-sm font-medium mb-1 text-input-text">Tópico de tablero</label>
                 <input
                   id="topico-tablero"
                   type="text"
-                  className="w-full border rounded px-2 py-1"
+                  className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
                   value={topicoTablero}
                   onChange={(e) => setTopicoTablero(e.target.value)}
                   placeholder="topico/principal, principal, etc"
                   maxLength={LIMITE_CARACTERES}
                 />
                 <div className="flex justify-end mt-1">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-text-muted">
                     {topicoTablero.length}/{LIMITE_CARACTERES}
                   </span>
                 </div>
@@ -104,15 +143,15 @@ const ModalNewTablero = ({setModalOpen,obtenerTableros})=>{
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   type="button"
-                  className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors text-sm"
+                  className="px-3 sm:px-4 py-2 rounded bg-button-secondary-bg text-button-secondary-text hover:bg-button-secondary-bg-hover transition-colors text-sm"
                   onClick={() => setModalOpen(false)}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-3 sm:px-4 py-2 rounded bg-[#109d95] text-white hover:bg-[#0f7d71] transition-colors text-sm"
-                  disabled={nombreTablero.trim() === ""}
+                  className="px-3 sm:px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark transition-colors text-sm"
+                  disabled={nombreTablero.trim() === "" || error !== "" || ipTablero.trim() === "" || topicoTablero.trim() === ""}
                 >
                   Agregar
                 </button>
