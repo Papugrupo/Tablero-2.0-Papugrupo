@@ -28,6 +28,22 @@ export const guardarMensaje = async ({ idTableroRef, mensaje, velocidad,animacio
     }
 };
 
+export const guardarMensajeJSON = async ({ idTableroRef, JSON }) => {
+  try {
+    const payload = {
+      ...JSON,
+      idTableroRef: idTableroRef 
+    };
+
+    const response = await axiosAuth.post('api/board/save-message-JSON', payload);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error al guardar el mensaje JSON:", error);
+    throw error;
+  }
+};
+
 export const obtenerGrupos = async () => {
     try {
         const response = await axiosAuth.get('api/user/group-list');
@@ -88,16 +104,24 @@ export const unirseGrupo = async ({ idGrupo }) => {
     }
 }
 
-export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, topicoTablero}) => {
+export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, topicoTablero, formatoMensaje, atributosJson}) => {
     try {
-        const response = await axiosAuth.post('api/board/add-board',{
+        const payload = {
             nombreTablero: nombreTablero,
             protocoloTablero: protocoloTablero,
             ipTablero: ipTablero,
-            topicoTablero: topicoTablero
-        });
+            topicoTablero: topicoTablero,
+            formatoMensaje: formatoMensaje
+        };
 
-        console.log("Tablero:", response);
+        // Condicionalmente añadir atributosJson si formatoMensaje es 'JSON' y existen
+        if (formatoMensaje === 'JSON' && atributosJson) {
+            payload.atributosJson = atributosJson;
+        }
+
+        const response = await axiosAuth.post('api/board/add-board', payload);
+
+        console.log("Tablero creado:", response);
         return response.data;
     } catch (error) {
         console.error("Error al crear tablero: ", error);
@@ -105,13 +129,22 @@ export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, 
     }
 };
 
-export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero }) => {
+export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero, formatoMensaje, atributosJson }) => {
     try {
-        const response = await axiosAuth.put(`api/board/update-board/${idTablero}`, {
+        const payload = {
             nombreTablero: nombreTablero,
             ipTablero: ipTablero,
-            topicoTablero: topicoTablero
-        });
+            topicoTablero: topicoTablero,
+            formatoMensaje: formatoMensaje, // Añadimos el nuevo campo
+        };
+
+        if (formatoMensaje === 'JSON' && atributosJson !== undefined) {
+            payload.atributosJson = atributosJson;
+        } else if (formatoMensaje === 'TEXTO_PLANO') {
+            payload.atributosJson = [];
+        }
+
+        const response = await axiosAuth.put(`api/board/update-board/${idTablero}`, payload);
 
         console.log("Tablero actualizado:", response.data);
         return response.data;

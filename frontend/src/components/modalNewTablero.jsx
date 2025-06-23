@@ -9,7 +9,7 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
     const [topicoTablero, setTopicoTablero] = useState("");
     const [protocoloTablero] = useState("ws");
     const [error, setError] = useState("");
-
+    const [formatoMensaje, setFormatoMensaje] = useState("TEXTO_PLANO"); // Nuevo estado para el formato
     const handleAddTablero = async (e) =>{
       e.preventDefault();
       setError("");
@@ -45,7 +45,8 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
             nombreTablero: nombreTablero.trim(),
             ipTablero: ipTablero.trim(),
             topicoTablero: topicoTablero.trim(),
-            protocoloTablero: protocoloTablero.trim()
+            protocoloTablero: protocoloTablero.trim(),
+            formatoMensaje: formatoMensaje, // Enviar el formato seleccionado
         });
 
         if (res){
@@ -139,6 +140,25 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                   </span>
                 </div>
               </div>
+
+              {/* Selección de Formato de Mensaje */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1 text-input-text">Formato de Mensaje</label>
+                <select
+                  id="formato-mensaje"
+                  className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                  value={formatoMensaje}
+                  onChange={(e) => {
+                    setFormatoMensaje(e.target.value);
+                    setError(""); // Limpiar errores generales
+                  }}
+                >
+                  <option value="TEXTO_PLANO">Texto Plano</option>
+                  <option value="JSON">JSON</option>
+                  <option value="PAPUGRUPO">PAPUGRUPO</option>
+                </select>
+              </div>
+
 
               <div className="flex justify-end gap-2 mt-4">
                 <button

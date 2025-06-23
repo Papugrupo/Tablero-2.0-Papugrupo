@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero, guardarMensajeJSON } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import { HistMensajes } from "../components/HistMensajes";
@@ -57,7 +57,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [nuevoTexto2, setNuevoTexto2] = useState("");
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
   const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
-  const [formatoMensaje, setFormatoMensaje] = useState("json");
+  const [formatoMensaje, setFormatoMensaje] = useState("TEXTO_PLANO"); 
 
   // Referencias para los tableros LED
   const marqueeRef1 = useRef(null);
@@ -73,7 +73,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   // Estados para texto personalizado
   const [textoPersonalizado1, setTextoPersonalizado1] = useState('');
   const [textoPersonalizado2, setTextoPersonalizado2] = useState('');
-  const [texto2Cache, setTexto2Cache] = useState('');
+  const [texto2Cache, setTexto2Cache] = useState(''); // Se mantiene para cachear si se vuelve a JSON
   const [textoMostrado1, setTextoMostrado1] = useState("");
   const [textoMostrado2, setTextoMostrado2] = useState("");
   const [velocidadPersonalizada, setVelocidadPersonalizada] = useState("x1");
@@ -115,6 +115,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   // Límite de caracteres para animaciones específicas
   const LIMITE_CARACTERES_REDUCIDO = 11;
 
+  
   // Función para validar la longitud del texto según la animación seleccionada
   const validarLongitudTexto = (texto, animacion) => {
     if (ANIMACIONES_LIMITE_REDUCIDO.includes(animacion)) {
@@ -149,7 +150,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         );
       }
 
-      if (textoPersonalizado2.length > LIMITE_CARACTERES_REDUCIDO) {
+      // Solo ajustar textoPersonalizado2 si el formato no es texto plano
+      if (formatoMensaje !== "TEXTO_PLANO" && textoPersonalizado2.length > LIMITE_CARACTERES_REDUCIDO) {
         setTextoPersonalizado2(textoPersonalizado2.substring(0, LIMITE_CARACTERES_REDUCIDO));
         showNotification(
           'warning',
@@ -158,7 +160,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         );
       }
     }
-  }, [animacionPersonalizada]);
+  }, [animacionPersonalizada, formatoMensaje]); // Agregado formatoMensaje como dependencia
 
   const obtenerDatosUsuarioDesdeToken = async () => {
     setCargando(true);
@@ -220,16 +222,18 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     obtenerIdTableros();
   }, []);
 
+  // --- ATENCIÓN: Lógica para manejar el segundo campo de texto según el formato ---
   useEffect(() => {
-    if (formatoMensaje === "plano") {
+    // Si el formato actual es TEXTO_PLANO y el textoPersonalizado2 tiene contenido, lo guardamos en cache
+    if (formatoMensaje === "TEXTO_PLANO") {
       if (textoPersonalizado2.trim() !== '') {
         setTexto2Cache(textoPersonalizado2);
       }
-      setTextoPersonalizado2('');
-    } else {
-      setTextoPersonalizado2(texto2Cache);
+      setTextoPersonalizado2(''); // Vaciamos textoPersonalizado2 si es TEXTO_PLANO
+    } else { // Si el formato es JSON (o cualquier otro que no sea TEXTO_PLANO)
+      setTextoPersonalizado2(texto2Cache); // Restauramos el valor cacheado
     }
-  }, [formatoMensaje]);
+  }, [formatoMensaje]); // Depende solo de formatoMensaje
 
   // Efecto para cargar datos del tablero y gestionar MQTT cuando cambia tableroSeleccionado
   useEffect(() => {
@@ -240,6 +244,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         setMensajeActual(null);
         // Desconectar MQTT si no hay tablero seleccionado
         onTableroConfigChange(null);
+        // Limpiar formatoMensaje o establecer un valor por defecto seguro
+        setFormatoMensaje("TEXTO_PLANO"); 
         return;
       }
 
@@ -249,6 +255,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         // Cargar información del tablero
         const info = await obtenerInfoTablero(tableroSeleccionado);
         setTableroInfo(info);
+        // --- ATENCIÓN: Actualizar el formatoMensaje según la info del tablero ---
+        if (info && info.formatoMensaje) {
+            setFormatoMensaje(info.formatoMensaje);
+        } else {
+            setFormatoMensaje("TEXTO_PLANO"); // Fallback por defecto
+        }
 
         // Cargar mensajes del tablero
         const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
@@ -273,13 +285,14 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         setMensajes([]);
         setTableroInfo(null);
         onTableroConfigChange(null);
+        setFormatoMensaje("TEXTO_PLANO"); // Restablecer formato en caso de error
       } finally {
         setCargando(false);
       }
     };
 
     cargarDataTablero();
-  }, [tableroSeleccionado]); // SOLO tableroSeleccionado como dependencia
+  }, [tableroSeleccionado, onTableroConfigChange]); // SOLO tableroSeleccionado como dependencia
 
   // Función para separar las líneas del mensaje
   const obtenerLineasDeMensaje = (mensaje) => {
@@ -301,7 +314,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
   // Función para actualizar el mensaje actual desde mensajes guardados
   const actualizarMensaje = () => {
-    if (seleccionado !== null && mensajes[seleccionado]) {
+    if ( mensajes[seleccionado]) {
       setMensajeActual(seleccionado);
       setAnimacionActual(mensajes[seleccionado].animacion || "PA_SCROLL_LEFT");
 
@@ -312,7 +325,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         const lineas = obtenerLineasDeMensaje(mensajes[seleccionado].mensaje);
 
         let mensajeAEnviar;
-        if (formatoMensaje === "plano") {
+        if (formatoMensaje === "TEXTO_PLANO") {
           // Formato de texto plano
           mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
           console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
@@ -323,27 +336,47 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             topico: topicCompleto,
             mensaje: mensajeAEnviar,
           });
-        } else {
-          // Formato JSON
-          const mensajeJSON = {
+        } else if (tableroInfo?.formatoMensaje === "PAPUGRUPO") {
+          // Formato PAPUGRUPO: Construir objeto PAPUGRUPO con texto1, texto2, velocidad, animación
+          // Y las claves de los atributos PAPUGRUPO del tablero, sin valor
+          const mensajePAPUGRUPO = {
             texto1: lineas[0],
-            texto2: lineas[1],
+            texto2: lineas[1], // Se mantiene texto2 si el formato del tablero es PAPUGRUPO
             velocidad: `x${mensajes[seleccionado].velocidad}`,
             animacion: mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"
           };
+
+          console.log("🔄 Publicando mensaje (PAPUGRUPO):", mensajePAPUGRUPO);
+          publish(topicCompleto, JSON.stringify(mensajePAPUGRUPO));
+          mensajeAEnviar = JSON.stringify(mensajePAPUGRUPO);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: topicCompleto,
+            mensaje: JSON.stringify(mensajePAPUGRUPO),
+          });
+        } else if (tableroInfo?.formatoMensaje === "JSON") {
+          const mensajeJSON = mensajes[seleccionado].mensaje;
+          console.log("mensajeJSON: ", mensajeJSON);
+
           console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
           publish(topicCompleto, JSON.stringify(mensajeJSON));
-          mensajeAEnviar = mensajeJSON;
+          mensajeAEnviar = JSON.stringify(mensajeJSON);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
             topico: topicCompleto,
             mensaje: JSON.stringify(mensajeJSON),
           });
+        } else {
+            // Manejar caso de formato desconocido o nulo
+            console.warn(`⚠️ Formato de mensaje desconocido para el tablero: ${tableroInfo?.formatoMensaje}`);
+            showNotification('error', 'Error de formato', 'El formato de mensaje del tablero es desconocido.');
+            return;
         }
 
         console.log(`✅ Mensaje publicado en tópico '${topicCompleto}':`, mensajeAEnviar);
-        showNotification('success', 'Mensaje enviado', `El mensaje ha sido enviado al tablero LED (formato: ${formatoMensaje.toUpperCase()})`);
+        showNotification('success', 'Mensaje enviado', `El mensaje ha sido enviado al tablero LED (formato: ${tableroInfo?.formatoMensaje})`);
       } else {
         if (!topicCompleto) {
           console.warn('⚠️ No se pudo publicar: Tópico del tablero no definido.');
@@ -361,23 +394,40 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
   // Función para actualizar con mensaje personalizado
   const actualizarMensajePersonalizado = () => {
-    // Validación básica según el formato
-    if (formatoMensaje === "plano") {
+    if (!tableroInfo) {
+      showNotification('error', 'Tablero no seleccionado', 'Por favor, selecciona un tablero primero.');
+      return;
+    }
+
+    const currentFormatoMensaje = tableroInfo.formatoMensaje; // Usar el formato del tablero seleccionado
+
+    // Validación básica según el formato del tablero
+    if (currentFormatoMensaje === "TEXTO_PLANO") {
       if (textoPersonalizado1.trim() === "") {
         showNotification('error', 'Texto vacío', 'Por favor ingresa el texto a mostrar.');
         return;
       }
-    } else {
+      // Asegurarse de que textoPersonalizado2 esté vacío si el formato es TEXTO_PLANO
+      setTextoPersonalizado2(""); 
+    } else if (currentFormatoMensaje === "PAPUGRUPO") {
       if (textoPersonalizado1.trim() === "" && textoPersonalizado2.trim() === "") {
         showNotification('error', 'Texto vacío', 'Por favor ingresa al menos una línea de texto.');
         return;
       }
+    } else if (currentFormatoMensaje === "JSON") {
+      if (textoPersonalizado1.trim() === "") {
+        showNotification('error', 'Texto vacío', 'Por favor ingresa al menos una línea de texto.');
+        return;
+      }
+    } else {
+        showNotification('error', 'Formato no soportado', 'El formato del tablero seleccionado no es compatible.');
+        return;
     }
 
     // Verificar límites de caracteres según animación
     const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
     if (textoPersonalizado1.length > limiteActual ||
-      (formatoMensaje !== "plano" && textoPersonalizado2.length > limiteActual)) {
+        (currentFormatoMensaje === "PAPUGRUPO" && textoPersonalizado2.length > limiteActual)) { // Solo validar texto2 si es JSON
       showNotification(
         'warning',
         'Límite excedido',
@@ -387,27 +437,51 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     }
 
     // Actualizar los textos que se mostrarán localmente
-
     setTextoMostrado1(textoPersonalizado1.trim());
-    setTextoMostrado2(formatoMensaje === "plano" ? "" : textoPersonalizado2.trim());
+    setTextoMostrado2(currentFormatoMensaje === "TEXTO_PLANO" ? "" : textoPersonalizado2.trim());
 
     // Actualizar el estado para mostrar el mensaje personalizado
     setMensajeActual("personalizado");
     setAnimacionActual(animacionPersonalizada);
 
-    // Publicar mensaje en MQTT según el formato
+    // Publicar mensaje en MQTT según el formato del tablero
     if (isConnected) {
       try {
         let mensajeAPublicar;
         const topicoTablero = tableroInfo.topicoTablero;
-        if (formatoMensaje === "json") {
-          // Formato JSON
+
+        if (currentFormatoMensaje === "PAPUGRUPO") {
+          // Formato PAPUGRUPO
           mensajeAPublicar = {
             texto1: textoPersonalizado1.trim(),
             texto2: textoPersonalizado2.trim(),
             velocidad: velocidadPersonalizada,
             animacion: animacionPersonalizada
           };
+          console.log("mensaje a publicar:", mensajeAPublicar)
+
+          publish(topicoTablero, JSON.stringify(mensajeAPublicar));
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: JSON.stringify(mensajeAPublicar),
+          });
+        } else if (currentFormatoMensaje === "TEXTO_PLANO") {
+          // Formato texto plano (solo texto1, velocidad, animación)
+          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
+          publish(topicoTablero, mensajeAPublicar);
+          agregarAMensajeHistorial({
+            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
+            hora: new Date().toLocaleTimeString(),
+            topico: tableroInfo?.topicoTablero,
+            mensaje: mensajeAPublicar, // Aquí es mensajeAPublicar directamente, no JSON.stringify
+          });
+        } else if (currentFormatoMensaje === "JSON") {
+          // Formato JSON
+          mensajeAPublicar = textoPersonalizado1;
+          console.log("mensaje a publicar:", mensajeAPublicar)
+
           publish(topicoTablero, JSON.stringify(mensajeAPublicar));
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
@@ -416,18 +490,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             mensaje: JSON.stringify(mensajeAPublicar),
           });
         } else {
-          // Formato texto plano
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
-          publish(topicoTablero, mensajeAPublicar);
-          agregarAMensajeHistorial({
-            tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
-            hora: new Date().toLocaleTimeString(),
-            topico: tableroInfo?.topicoTablero,
-            mensaje: JSON.stringify(mensajeAPublicar),
-          });
+            console.warn(`⚠️ Formato de mensaje del tablero no soportado para publicación personalizada: ${currentFormatoMensaje}`);
+            showNotification('error', 'Error de formato', 'El formato del tablero seleccionado no permite el envío de mensajes personalizados de esta manera.');
+            return;
         }
 
-        console.log(`✅ Mensaje personalizado publicado en formato ${formatoMensaje}:`, mensajeAPublicar);
+        console.log(`✅ Mensaje personalizado publicado en formato ${currentFormatoMensaje}:`, mensajeAPublicar);
 
         // Mostrar feedback de éxito
         showNotification(
@@ -468,9 +536,20 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     const topicCompleto = tableroInfo?.topicoTablero;
 
     if (isConnected && topicCompleto) {
-      publish(topicCompleto, JSON.stringify({ comando: 'limpiar' }));
-      console.log(`✅ Comando de limpieza publicado en tópico '${topicCompleto}'`);
-      showNotification('success', 'Tablero limpiado', 'Orden de limpieza enviada al tablero LED');
+        // --- ATENCIÓN: El comando de limpiar puede ser diferente si es texto plano ---
+        let comandoLimpiar;
+        if (tableroInfo?.formatoMensaje === "PAPUGRUPO") {
+            comandoLimpiar = JSON.stringify({ comando: 'limpiar' });
+        } else {
+            // Para texto plano, podrías enviar un mensaje vacío o un comando específico si el firmware lo soporta
+            // Por ejemplo, "||PA_NO_EFFECT" o "LIMPIAR_PANTALLA"
+            comandoLimpiar = "||PA_NO_EFFECT"; // Ejemplo: Vacío, sin velocidad, sin efecto
+            console.warn("⚠️ Enviando comando de limpieza en formato TEXTO_PLANO. Asegúrese de que el firmware del tablero lo soporte.");
+        }
+        
+        publish(topicCompleto, comandoLimpiar);
+        console.log(`✅ Comando de limpieza publicado en tópico '${topicCompleto}'`);
+        showNotification('success', 'Tablero limpiado', 'Orden de limpieza enviada al tablero LED');
     } else {
       if (!topicCompleto) {
         console.warn('⚠️ No se pudo limpiar: Tópico del tablero no definido.');
@@ -512,19 +591,44 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     return (
       <div>
         <div>{lineas[0]}</div>
-        {lineas[1] && <div className="text-sm opacity-80">{lineas[1]}</div>}
+        {/* Solo mostrar la segunda línea si el formato del tablero actual es PAPUGRUPO, o si el mensaje tiene contenido en la segunda línea */}
+        {tableroInfo?.formatoMensaje === "PAPUGRUPO" && lineas[1] && <div className="text-sm opacity-80">{lineas[1]}</div>}
+        {tableroInfo?.formatoMensaje === "TEXTO_PLANO" && lineas[1] && <div className="text-sm opacity-80"> (Segunda línea ignorada en texto plano)</div>}
       </div>
     );
   };
 
   const enviarNuevoMensaje = async (e) => {
     e.preventDefault();
-    if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") return;
-
-    if (!tableroSeleccionado) {
+    // Validar según el formato del tablero actual
+    if (!tableroInfo) {
       showNotification('warning', 'Seleccione un tablero', 'Debe seleccionar un tablero antes de guardar un mensaje.');
       return;
     }
+
+    if (tableroInfo.formatoMensaje === "TEXTO_PLANO") {
+        if (nuevoTexto1.trim() === "") {
+            showNotification('error', 'Texto vacío', 'El texto principal no puede estar vacío para TEXTO_PLANO.');
+            return;
+        }
+        // Para TEXTO_PLANO, aseguramos que nuevoTexto2 no se envíe al guardar
+        setNuevoTexto2(""); 
+    } else if (tableroInfo.formatoMensaje === "PAPUGRUPO") {
+        if (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === "") {
+            showNotification('error', 'Texto vacío', 'Debe ingresar al menos una línea de texto para PAPUGRUPO.');
+            return;
+        }
+      
+    } else if (tableroInfo.formatoMensaje === "JSON") {
+        if (nuevoTexto1.trim() === "") {
+            showNotification('error', 'Texto vacío', 'Debe ingresar al menos una línea de texto para JSON.');
+            return;
+        }
+    } else {
+        showNotification('error', 'Formato de tablero desconocido', 'El formato de mensaje del tablero no es compatible para guardar.');
+        return;
+    }
+
 
     const velocidadInput = nuevaVelocidad.trim();
     const regex = /^[0-9]+(\.[0-9]+)?$/;
@@ -537,14 +641,32 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     setCargando(true);
 
     try {
-      const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`;
+      // El mensaje se guarda como una cadena con \n para separar líneas
+      // El backend no guarda los atributos JSON aquí, solo el contenido del mensaje
+      if (tableroInfo.formatoMensaje != "JSON") {
+        const mensajeCompleto = `${nuevoTexto1.trim()}\n${nuevoTexto2.trim()}`; 
 
-      await guardarMensaje({
-        idTableroRef: tableroSeleccionado,
-        mensaje: mensajeCompleto,
-        velocidad: velocidadFinal,
-        animacion: nuevaAnimacion
-      });
+        await guardarMensaje({
+          idTableroRef: tableroSeleccionado,
+          mensaje: mensajeCompleto,
+          velocidad: velocidadFinal,
+          animacion: nuevaAnimacion
+        });
+      }
+      else{
+        try {
+          const parsedJson = JSON.parse(nuevoTexto1); 
+          await guardarMensajeJSON({
+              idTableroRef: tableroSeleccionado,
+              JSON: parsedJson
+          });
+          console.log("Mensaje JSON enviado correctamente.");
+      } catch (error) {
+          console.error("Error al parsear el mensaje JSON o al guardar:", error);
+      }
+
+      }
+      
 
       // Recargar mensajes del tablero
       const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
@@ -609,7 +731,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         };
 
         reiniciarAnimacion(el1);
-        reiniciarAnimacion(el2);
       }
     };
 
@@ -637,18 +758,29 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
     if (confirmacion) {
       console.log("El usuario confirmó la eliminación.");
-      const res = await borrarTablero({ idTablero: tableroInfo.idTablero });
-      if (res) {
-        window.location.reload();
-      } else {
+      // Se asume que tableroInfo.idTablero está disponible
+      if (!tableroInfo || !tableroInfo.idTablero) {
+        showNotification('error', 'Error', 'No hay tablero seleccionado para eliminar.');
+        return;
+      }
+      setCargando(true);
+      try {
+        await borrarTablero(tableroInfo.idTablero); // La función ahora espera solo el ID
+        showNotification('success', 'Eliminado', 'Tablero eliminado exitosamente.');
+        // Reiniciar la vista después de la eliminación
+        setTableroSeleccionado(""); // Deseleccionar el tablero
+        obtenerIdTableros(); // Volver a cargar la lista de tableros
+      } catch (err) {
+        console.error("Error al eliminar tablero:", err);
         showNotification('error', 'Error al eliminar', 'No se pudo eliminar el tablero. Intente nuevamente más tarde.');
+      } finally {
+        setCargando(false);
       }
 
     } else {
-
       console.log("El usuario canceló la eliminación.");
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-light text-darkNeutral">
@@ -683,26 +815,38 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             </label>
             <div className="flex gap-2">
               <button
-                onClick={() => setFormatoMensaje("json")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${formatoMensaje === "json"
+                onClick={() => setFormatoMensaje("PAPUGRUPO")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${formatoMensaje === "PAPUGRUPO"
                   ? 'bg-primary text-light shadow-md'
                   : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
                   }`}
+                  disabled
+              >
+                📄 PAPUGRUPO
+              </button>
+              <button
+                onClick={() => setFormatoMensaje("JSON")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${formatoMensaje === "JSON"
+                  ? 'bg-primary text-light shadow-md'
+                  : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
+                  }`}
+                  disabled
               >
                 📄 JSON
               </button>
               <button
-                onClick={() => setFormatoMensaje("plano")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formatoMensaje === "plano"
+                onClick={() => setFormatoMensaje("TEXTO_PLANO")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formatoMensaje === "TEXTO_PLANO"
                   ? 'bg-primary text-light shadow-md'
                   : 'bg-secondary text-darkNeutral hover:bg-darkNeutral'
                   }`}
+                  disabled
               >
                 📝 Texto Plano
               </button>
             </div>
             <div className="text-xs text-muted-themed bg-tertiary-bg px-3 py-2 rounded border border-border-base"> {/* Cambiados text-gray-500, bg-gray-50 y añadido border-border-base */}
-              {formatoMensaje === "json" ? (
+              {formatoMensaje === "PAPUGRUPO" ? (
                 <span>Formato: <code>{"{"}"texto1":"...", "texto2":"...", "velocidad":"...", "animacion":"..."{"}"}</code></span>
               ) : (
                 <span>Formato: <code>texto1|texto2|velocidad|animacion</code></span>
@@ -788,6 +932,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                                     <span className="text-xs text-text-darker">{tableroInfo.topicoTablero || "No configurado"}</span>
                                 </div>
                             </div>
+                            <div className="bg-input-bg p-2 rounded border border-border-base">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-input-text">Formato mensaje:</span>
+                                    <span className="text-xs text-text-darker">{tableroInfo.formatoMensaje || "No configurado"}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -818,8 +968,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                 )}
               </div>
 
-              {/* Segunda línea solo visible en modo JSON y si hay texto */}
-              {formatoMensaje !== "plano" && (
+              {/* Segunda línea solo visible en modo PAPUGRUPO y si hay texto */}
+              {formatoMensaje == "PAPUGRUPO" && (
                 <div className="marqueee-container">
                   {mensajeActual !== null && mensajeTexto2 ? (
                     <div
@@ -876,7 +1026,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
             {modoPersonalizado && (
               <div className="space-y-4">
                 <div>
-                  {formatoMensaje === "plano" ? (
+                  {formatoMensaje === "TEXTO_PLANO" && (
                     // Modo texto plano: solo un campo de texto
                     <>
                       <label htmlFor="textoPersonalizado" className="block text-sm font-medium text-gray-700 mb-1">
@@ -902,8 +1052,10 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                       </div>
 
                     </>
-                  ) : (
-                    // Modo JSON: dos líneas de texto
+                  )}
+
+                  {formatoMensaje === "PAPUGRUPO" && (
+                    // Modo PAPUGRUPO: dos líneas de texto
                     <>
                       <label htmlFor="textoPersonalizado1" className="block text-sm font-medium text-gray-700 mb-1">
                         Línea 1:
@@ -930,80 +1082,35 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           </span>
                         )}
                       </div>
-                      <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                        <span className="text-gray-500">
-                          Caracteres: {textoPersonalizado1.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
-                        </span>
-                        {textoPersonalizado1.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
-                          <span className="text-red-500">Límite alcanzado</span>
-                        )}
-                      </div>
-
-                      <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1 mt-3">
-                        Línea 2:
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          id="textoPersonalizado2"
-                          value={textoPersonalizado2}
-                          onChange={(e) => {
-                            const nuevoTexto = e.target.value;
-                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
-                            if (nuevoTexto.length <= limiteActual) {
-                              setTextoPersonalizado2(nuevoTexto);
-                            }
-                          }}
-                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
-                          placeholder="Escribe la segunda línea aquí (opcional)..."
-                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                        />
-                        {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
-                          <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
-                            Máx: 11 car.
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex justify-between mt-1 text-xs sm:text-sm">
-                        <span className="text-gray-500">
-                          Caracteres: {textoPersonalizado2.length}/{obtenerLimiteCaracteres(animacionPersonalizada)}
-                        </span>
-                        {textoPersonalizado2.length >= obtenerLimiteCaracteres(animacionPersonalizada) && (
-                          <span className="text-red-500">Límite alcanzado</span>
-                        )}
-                      </div>
+                      
                     </>
                   )}
+
+                    {formatoMensaje === "JSON" && (
+                      // Modo JSON: una línea de texto libre para el JSON
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-json-libre">Contenido del Mensaje JSON</label>
+                        <div className="relative">
+                          <input
+                            id="mensaje-json-libre"
+                            type="text"
+                            className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                            value={textoPersonalizado1}
+                            onChange={(e) => {
+                                            const nuevoTexto = e.target.value;
+                                                setTextoPersonalizado1(nuevoTexto);
+                            } }
+                            placeholder="Introduce el texto para el mensaje JSON"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                 </div>
 
                 <div >
 
-                  {formatoMensaje === "plano" ? (
-                    <div >
-                      <div>
-                        <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                          Velocidad:
-                        </label>
-
-                      </div>
-                      <div>
-                        <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                          Velocidad:
-                        </label>
-                        <select
-                          id="velocidadPersonalizada"
-                          value={velocidadPersonalizada}
-                          onChange={(e) => setVelocidadPersonalizada(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                        >
-                          {opcionesVelocidad.map(opcion => (
-                            <option key={opcion} value={opcion}>{opcion}</option>
-                          ))}
-                        </select>
-                      </div>
-                     
-                    </div>
-                  ) : (
+                  {formatoMensaje != "JSON" && (
                     <div className="col-span-2">
                      <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
                           Velocidad:
@@ -1018,6 +1125,9 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                             <option key={opcion} value={opcion}>{opcion}</option>
                           ))}
                         </select>
+
+                      {formatoMensaje === "PAPUGRUPO" && (
+                        <>
                        <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
                         Animación:
                       </label>
@@ -1031,14 +1141,19 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
                         ))}
                       </select>
+                      </>
+                      )}
+
                     </div>
+                  
+                    
                   )}
                 </div>
 
                 <button
                   onClick={actualizarMensajePersonalizado}
-                  disabled={(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected}
-                  className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${(textoPersonalizado1.trim() === "" && (formatoMensaje !== "plano" && textoPersonalizado2.trim() === "")) || !isConnected
+                  disabled={ !isConnected}
+                  className={`bg-[#109d95] hover:bg-[#4fd1c5] text-white font-bold py-2 px-4 rounded-full shadow-md w-full ${!isConnected
                     ? 'opacity-50 cursor-not-allowed'
                     : ''
                     }`}
@@ -1127,15 +1242,15 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                     {/* CAMBIO: Fondo y texto usando bg-input-bg y text-input-text */}
                     <div className="bg-input-bg p-2 rounded mb-3 text-xs text-input-text flex items-center">
                         <span className="font-medium mr-1">Formato actual:</span>
-                        {formatoMensaje === "json" ?
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded">JSON (dos líneas)</span> :
+                        {formatoMensaje === "PAPUGRUPO" ?
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded">PAPUGRUPO (dos líneas)</span> :
                             <span className="px-2 py-0.5 bg-green-100 text-green-800 font-medium rounded">Texto plano (una línea)</span>
                         }
                     </div>
 
                     {/* Campos de texto que cambian según el formato */}
-                    {formatoMensaje === "plano" ? (
-                        // Modo texto plano: una línea
+                    {formatoMensaje === "TEXTO_PLANO" && (
+                        // Modo TEXTO_PLANO: una línea
                         <div className="mb-4">
                             {/* Label con text-input-text */}
                             <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-texto">Mensaje</label>
@@ -1172,8 +1287,9 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                                 )}
                             </div>
                         </div>
-                    ) : (
-                        // Modo JSON: dos líneas
+                      )}
+
+                      {formatoMensaje === "PAPUGRUPO" && (
                         <>
                             <div className="mb-4">
                                 {/* Label con text-input-text */}
@@ -1248,51 +1364,76 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                                     )}
                                 </div>
                             </div>
-                        </>
+                      </>
                     )}
 
-                    <div className="mb-4">
-                        {/* Label con text-input-text */}
-                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-velocidad">Velocidad</label>
-                        {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
-                        <select id="mensaje-velocidad" className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
-                            <option value="">Seleccionar velocidad</option>
-                            {opcionesVelocidad.map(v => v.replace('x', '')).map(val => <option key={val} value={val}>{val}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="mb-4">
-                        {/* Label con text-input-text */}
-                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-animacion">Animación</label>
-                        {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
-                        <select
-                            id="mensaje-animacion"
+                    {formatoMensaje === "JSON" && (
+                      // Modo JSON: una línea de texto libre para el JSON
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-json-libre">Contenido del Mensaje JSON</label>
+                        <div className="relative">
+                          <input
+                            id="mensaje-json-libre"
+                            type="text"
                             className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
-                            value={nuevaAnimacion}
+                            value={nuevoTexto1}
                             onChange={(e) => {
-                                setNuevaAnimacion(e.target.value);
-                                // Truncar el texto si es necesario al cambiar a animación con límite reducido
-                                if (ANIMACIONES_LIMITE_REDUCIDO.includes(e.target.value)) {
-                                    if (nuevoTexto1.length > LIMITE_CARACTERES_REDUCIDO) {
-                                        setNuevoTexto1(nuevoTexto1.substring(0, LIMITE_CARACTERES_REDUCIDO));
-                                        showNotification(
-                                            'warning',
-                                            'Texto ajustado',
-                                            `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
-                                        );
-                                    }
-                                    if (formatoMensaje === "json" && nuevoTexto2.length > LIMITE_CARACTERES_REDUCIDO) {
-                                        setNuevoTexto2(nuevoTexto2.substring(0, LIMITE_CARACTERES_REDUCIDO));
-                                    }
-                                }
-                            }}
-                        >
-                            {ANIMACIONES.map(anim => (
-                                <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
+                                            const nuevoTexto1 = e.target.value;
+                                                setNuevoTexto1(nuevoTexto1);
+                            } }
+                            placeholder="Introduce el texto para el mensaje JSON"
+                          />
+                        </div>
+                      </div>
+                    )}
 
+                    {formatoMensaje != "JSON" && (
+                      <>
+                      <div className="mb-4">
+                          {/* Label con text-input-text */}
+                          <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-velocidad">Velocidad</label>
+                          {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
+                          <select id="mensaje-velocidad" className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text" value={nuevaVelocidad} onChange={(e) => setNuevaVelocidad(e.target.value)}>
+                              <option value="">Seleccionar velocidad</option>
+                              {opcionesVelocidad.map(v => v.replace('x', '')).map(val => <option key={val} value={val}>{val}</option>)}
+                          </select>
+                      </div>
+
+                      {formatoMensaje === "PAPUGRUPO" && (
+                      <div className="mb-4">
+                          {/* Label con text-input-text */}
+                          <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-animacion">Animación</label>
+                          {/* CAMBIO: Select con bg-input-bg, border-border-base, text-input-text */}
+                          <select
+                              id="mensaje-animacion"
+                              className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                              value={nuevaAnimacion}
+                              onChange={(e) => {
+                                  setNuevaAnimacion(e.target.value);
+                                  // Truncar el texto si es necesario al cambiar a animación con límite reducido
+                                  if (ANIMACIONES_LIMITE_REDUCIDO.includes(e.target.value)) {
+                                      if (nuevoTexto1.length > LIMITE_CARACTERES_REDUCIDO) {
+                                          setNuevoTexto1(nuevoTexto1.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                                          showNotification(
+                                              'warning',
+                                              'Texto ajustado',
+                                              `La animación seleccionada limita el texto a ${LIMITE_CARACTERES_REDUCIDO} caracteres.`
+                                          );
+                                      }
+                                      if (formatoMensaje === "PAPUGRUPO" && nuevoTexto2.length > LIMITE_CARACTERES_REDUCIDO) {
+                                          setNuevoTexto2(nuevoTexto2.substring(0, LIMITE_CARACTERES_REDUCIDO));
+                                      }
+                                  }
+                              }}
+                          >
+                              {ANIMACIONES.map(anim => (
+                                  <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
+                              ))}
+                          </select>
+                      </div>
+                      )}
+                    </>
+                    )}
                     <div className="flex justify-end gap-2 mt-4">
                         {/* Botón Cancelar con clases de botón secundario */}
                         <button
@@ -1306,9 +1447,9 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                         <button
                             type="submit"
                             className="px-3 sm:px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark transition-colors text-sm"
-                            disabled={(formatoMensaje === "plano" ? nuevoTexto1.trim() === "" :
+                            disabled={(formatoMensaje === "TEXTO_PLANO" ? nuevoTexto1.trim() === "" :
                                 (nuevoTexto1.trim() === "" && nuevoTexto2.trim() === ""))
-                                || !nuevaVelocidad || !tableroSeleccionado}
+                                 || !tableroSeleccionado}
                         >
                             Agregar
                         </button>
