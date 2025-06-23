@@ -5,6 +5,7 @@
 /* --- 1. Definición de Variables CSS para Temas --- */
 
 :root {
+  --color-bg-base: #f7fafc;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
