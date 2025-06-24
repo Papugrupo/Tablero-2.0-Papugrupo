@@ -469,7 +469,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           });
         } else if (currentFormatoMensaje === "TEXTO_PLANO") {
           // Formato texto plano (solo texto1, velocidad, animación)
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}|${animacionPersonalizada}`;
+          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}`;
           publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
