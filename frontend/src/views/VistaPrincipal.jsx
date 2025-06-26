@@ -327,7 +327,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         let mensajeAEnviar;
         if (formatoMensaje === "TEXTO_PLANO") {
           // Formato de texto plano
-          mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
+          mensajeAEnviar = `${lineas[0]}`;
           console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
           publish(topicCompleto, mensajeAEnviar);
           agregarAMensajeHistorial({
@@ -469,7 +469,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           });
         } else if (currentFormatoMensaje === "TEXTO_PLANO") {
           // Formato texto plano (solo texto1, velocidad, animación)
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}`;
+          mensajeAPublicar = `${textoPersonalizado1.trim()}`;
           publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
@@ -1110,7 +1110,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
                 <div >
 
-                  {formatoMensaje != "JSON" && (
+                  {formatoMensaje == "PAPUGRUPO" && (
                     <div className="col-span-2">
                      <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
                           Velocidad:
@@ -1126,8 +1126,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           ))}
                         </select>
 
-                      {formatoMensaje === "PAPUGRUPO" && (
-                        <>
                        <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
                         Animación:
                       </label>
@@ -1141,8 +1139,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
                         ))}
                       </select>
-                      </>
-                      )}
 
                     </div>
                   
@@ -1387,7 +1383,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                       </div>
                     )}
 
-                    {formatoMensaje != "JSON" && (
+                    {formatoMensaje === "PAPUGRUPO" && (
                       <>
                       <div className="mb-4">
                           {/* Label con text-input-text */}
@@ -1399,7 +1395,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           </select>
                       </div>
 
-                      {formatoMensaje === "PAPUGRUPO" && (
                       <div className="mb-4">
                           {/* Label con text-input-text */}
                           <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-animacion">Animación</label>
@@ -1431,7 +1426,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                               ))}
                           </select>
                       </div>
-                      )}
                     </>
                     )}
                     <div className="flex justify-end gap-2 mt-4">
