@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero, guardarMensajeJSON } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import { HistMensajes } from "../components/HistMensajes";
@@ -360,13 +360,13 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           console.log("mensajeJSON: ", mensajeJSON);
 
           console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
-          publish(topicCompleto, JSON.stringify(mensajeJSON));
-          mensajeAEnviar = JSON.stringify(mensajeJSON);
+          publish(topicCompleto, mensajeJSON);
+          mensajeAEnviar = mensajeJSON;
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
             topico: topicCompleto,
-            mensaje: JSON.stringify(mensajeJSON),
+            mensaje: mensajeJSON,
           });
         } else {
             // Manejar caso de formato desconocido o nulo
@@ -482,12 +482,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           mensajeAPublicar = textoPersonalizado1;
           console.log("mensaje a publicar:", mensajeAPublicar)
 
-          publish(topicoTablero, JSON.stringify(mensajeAPublicar));
+          publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
             topico: tableroInfo?.topicoTablero,
-            mensaje: JSON.stringify(mensajeAPublicar),
+            mensaje: mensajeAPublicar,
           });
         } else {
             console.warn(`⚠️ Formato de mensaje del tablero no soportado para publicación personalizada: ${currentFormatoMensaje}`);
@@ -655,10 +655,11 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       }
       else{
         try {
-          const parsedJson = JSON.parse(nuevoTexto1); 
-          await guardarMensajeJSON({
-              idTableroRef: tableroSeleccionado,
-              JSON: parsedJson
+          await guardarMensaje({
+            idTableroRef: tableroSeleccionado,
+            mensaje: nuevoTexto1,
+            velocidad: velocidadFinal,
+            animacion: nuevaAnimacion
           });
           console.log("Mensaje JSON enviado correctamente.");
       } catch (error) {

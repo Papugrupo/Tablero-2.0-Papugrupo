@@ -34,6 +34,7 @@ export const guardarMensajeJSON = async ({ idTableroRef, JSON }) => {
       ...JSON,
       idTableroRef: idTableroRef 
     };
+    console.log(payload);
 
     const response = await axiosAuth.post('api/board/save-message-JSON', payload);
 
