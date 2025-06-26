@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { editarTablero } from "../services/tablero.service";
 
-const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroInfo})=>{
+const ModalEditTablero = ({setModalOpen, tableroInfo,setTableroInfo})=>{
     const LIMITE_CARACTERES = 100;
 
     console.log("Tablero Info:", tableroInfo);
@@ -10,7 +10,8 @@ const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroI
     const [ipTablero, setIpTablero] = useState(tableroInfo.ipTablero || "");
     const [topicoTablero, setTopicoTablero] = useState(tableroInfo.topicoTablero || "");
     const [protocoloTablero] = useState("ws")
-
+    const [formatoMensaje, setFormatoMensaje] = useState(tableroInfo.formatoMensaje || "");
+    
     const handleEditTablero = async (e) =>{
       e.preventDefault();
       const res = await editarTablero({ 
@@ -18,6 +19,7 @@ const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroI
         nombreTablero: nombreTablero.trim(),
         ipTablero: ipTablero.trim(),
         topicoTablero: topicoTablero.trim(),
+        formatoMensaje: formatoMensaje
       });
 
       if (res){
@@ -26,6 +28,7 @@ const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroI
                     nombreTablero: nombreTablero.trim(),
                     ipTablero: ipTablero.trim(),         
                     topicoTablero: topicoTablero.trim(),
+                    formatoMensaje: formatoMensaje,
                 }));
         setModalOpen(false)
       }
@@ -119,6 +122,23 @@ const ModalEditTablero = ({setModalOpen,obtenerTableros, tableroInfo,setTableroI
                     {topicoTablero.length}/{LIMITE_CARACTERES}
                   </span>
                 </div>
+              </div>
+
+              {/* Selección de Formato de Mensaje */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1 text-input-text">Formato de Mensaje</label>
+                <select
+                  id="formato-mensaje"
+                  className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
+                  value={formatoMensaje}
+                  onChange={(e) => {
+                    setFormatoMensaje(e.target.value);
+                  }}
+                >
+                  <option value="TEXTO_PLANO">Texto Plano</option>
+                  <option value="JSON">JSON</option>
+                  <option value="PAPUGRUPO">PAPUGRUPO</option>
+                </select>
               </div>
 
               <div className="flex justify-end gap-2 mt-4">
