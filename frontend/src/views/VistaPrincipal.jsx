@@ -1130,6 +1130,32 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           </span>
                         )}
                       </div>
+
+                      <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
+                        Línea 2:
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="textoPersonalizado2"
+                          value={textoPersonalizado2}
+                          onChange={(e) => {
+                            const nuevoTexto2 = e.target.value;
+                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                            if (nuevoTexto2.length <= limiteActual) {
+                              setTextoPersonalizado2(nuevoTexto2);
+                            }
+                          }}
+                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                          placeholder="Escribe la primera línea aquí..."
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        />
+                        {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                          <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                            Máx: 11 car.
+                          </span>
+                        )}
+                      </div>
                       
                     </>
                   )}
