@@ -10,6 +10,59 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
     const [protocoloTablero] = useState("ws");
     const [error, setError] = useState("");
     const [formatoMensaje, setFormatoMensaje] = useState("TEXTO_PLANO"); // Nuevo estado para el formato
+    const [atributosJson, setAtributosJson] = useState([{ clave: "" }]);
+    const [attrErrors, setAttrErrors] = useState([]); 
+    
+    
+    const handleAddAtributo = () => {
+      setAtributosJson([...atributosJson, { clave: "" }]); 
+      setAttrErrors([...attrErrors, { clave: "" }]); 
+    };
+
+        const handleRemoveAtributo = (index) => {
+      const newAtributos = atributosJson.filter((_, i) => i !== index);
+      setAtributosJson(newAtributos);
+      const newAttrErrors = attrErrors.filter((_, i) => i !== index);
+      setAttrErrors(newAttrErrors);
+    };
+
+    const handleChangeAtributo = (index, field, value) => {
+      const newAtributos = [...atributosJson];
+      newAtributos[index][field] = value;
+      setAtributosJson(newAtributos);
+
+      // Limpiar el error específico para este campo si se está corrigiendo
+      const newAttrErrors = [...attrErrors];
+      if (newAttrErrors[index]) {
+        newAttrErrors[index][field] = "";
+        setAttrErrors(newAttrErrors);
+      }
+    };
+
+    const validateAtributosJson = () => {
+      let isValid = true;
+      // --- ATENCIÓN: attrErrors ahora solo valida 'clave' ---
+      const newAttrErrors = atributosJson.map(() => ({ clave: "" }));
+
+      if (formatoMensaje === "JSON") {
+        if (atributosJson.length === 0) {
+          setError("Si el formato es JSON, debe agregar al menos un atributo.");
+          isValid = false;
+        } else {
+          atributosJson.forEach((attr, index) => {
+            if (attr.clave.trim() === "") {
+              newAttrErrors[index].clave = "La clave no puede estar vacía.";
+              isValid = false;
+            }
+            // --- ATENCIÓN: Eliminada la validación de 'valor' ---
+          });
+        }
+      }
+      setAttrErrors(newAttrErrors);
+      return isValid;
+    };
+
+
     const handleAddTablero = async (e) =>{
       e.preventDefault();
       setError("");
@@ -18,6 +71,10 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
 
       if (trimmedNombreTablero === "") {
         setError("El nombre del tablero no puede estar vacío.");
+        return;
+      }
+
+      if (!validateAtributosJson()) {
         return;
       }
 
@@ -41,18 +98,27 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
       }
       
       try{
-          const res = await crearTablero({ 
-            nombreTablero: nombreTablero.trim(),
+          const payload = {
+            nombreTablero: trimmedNombreTablero,
             ipTablero: ipTablero.trim(),
             topicoTablero: topicoTablero.trim(),
             protocoloTablero: protocoloTablero.trim(),
-            formatoMensaje: formatoMensaje, // Enviar el formato seleccionado
-        });
+            formatoMensaje: formatoMensaje,
+          };
 
-        if (res){
-          refreshTableros();
-          setModalOpen(false)
-        }
+          // Añadir atributos JSON si el formato es JSON
+          if (formatoMensaje === "JSON") {
+            payload.atributosJson = atributosJson.map(attr => ({
+              clave: attr.clave.trim(),
+            }));
+          }
+
+          const res = await crearTablero(payload);
+
+          if (res){
+            refreshTableros();
+            setModalOpen(false)
+          }
       } catch (err) {
         console.error("Error al crear tablero:", err);
         setError("Error al crear tablero. Por favor, inténtalo de nuevo.");
@@ -158,6 +224,44 @@ const ModalNewTablero = ({setModalOpen, obtenerTableros: refreshTableros})=>{
                   <option value="PAPUGRUPO">PAPUGRUPO</option>
                 </select>
               </div>
+
+              {/* Atributos JSON (condicional) */}
+              {formatoMensaje === "JSON" && (
+                <div className="mb-4 border border-border-base p-3 rounded">
+                  <label className="block text-sm font-medium mb-2 text-input-text">Claves JSON</label>
+                  {atributosJson.map((attr, index) => (
+                    <div key={index} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        className={`w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text ${attrErrors[index]?.clave ? 'border-red-500' : ''}`}
+                        placeholder="Clave"
+                        value={attr.clave}
+                        onChange={(e) => handleChangeAtributo(index, "clave", e.target.value)}
+                      />
+                      {/* --- ATENCIÓN: Eliminado el input para 'valor' --- */}
+                      {atributosJson.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAtributo(index)}
+                          className="ml-2 p-1 rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        >
+                          X
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {attrErrors.some(err => err.clave) && (
+                    <p className="text-red-500 text-xs mt-1">Por favor, rellena todas las claves de los atributos.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleAddAtributo}
+                    className="mt-2 px-3 py-1 rounded bg-button-secondary-bg text-button-secondary-text hover:bg-button-secondary-bg-hover transition-colors text-sm"
+                  >
+                    + Añadir Clave
+                  </button>
+                </div>
+              )}
 
 
               <div className="flex justify-end gap-2 mt-4">

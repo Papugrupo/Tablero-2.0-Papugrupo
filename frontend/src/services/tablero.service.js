@@ -130,8 +130,10 @@ export const crearTablero = async ({nombreTablero, protocoloTablero, ipTablero, 
     }
 };
 
-export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero, formatoMensaje }) => {
+export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topicoTablero, formatoMensaje, atributosJson }) => {
     try {
+        console.log("atributosJson: "+atributosJson);
+
         const payload = {
             nombreTablero: nombreTablero,
             ipTablero: ipTablero,
@@ -139,11 +141,11 @@ export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topic
             formatoMensaje: formatoMensaje, // Añadimos el nuevo campo
         };
 
-        /*if (formatoMensaje === 'JSON' && atributosJson !== undefined) {
+        if (formatoMensaje === 'JSON' && atributosJson !== undefined) {
             payload.atributosJson = atributosJson;
-        } else if (formatoMensaje === 'TEXTO_PLANO') {
+        } else if (formatoMensaje === 'TEXTO_PLANO' ||  formatoMensaje === 'PAPUGRUPO') {
             payload.atributosJson = [];
-        }*/
+        }
 
         const response = await axiosAuth.put(`api/board/update-board/${idTablero}`, payload);
 
