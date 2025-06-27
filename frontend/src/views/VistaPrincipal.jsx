@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import './VistaPrincipal.css';
 import Loading from "../components/shared/Loading";
 import { MqttProvider, useMqtt } from "../shared/MqttConntection";
-import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero, guardarMensajeJSON } from "../services/tablero.service";
+import { obtenerMensajes, guardarMensaje, obtenerTableros, obtenerInfoTablero, borrarTablero } from "../services/tablero.service";
 import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import { HistMensajes } from "../components/HistMensajes";
@@ -58,6 +58,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [nuevaVelocidad, setNuevaVelocidad] = useState("");
   const [nuevaAnimacion, setNuevaAnimacion] = useState("PA_SCROLL_LEFT");
   const [formatoMensaje, setFormatoMensaje] = useState("TEXTO_PLANO"); 
+  const [nuevosValoresAtributosJson, setNuevosValoresAtributosJson] = useState({});
+
 
   // Referencias para los tableros LED
   const marqueeRef1 = useRef(null);
@@ -80,6 +82,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
   const [modoPersonalizado, setModoPersonalizado] = useState(false);
   const [animacionPersonalizada, setAnimacionPersonalizada] = useState("PA_SCROLL_LEFT");
   const [animacionActual, setAnimacionActual] = useState("PA_SCROLL_LEFT");
+  const [valoresAtributosJson, setValoresAtributosJson] = useState({});
 
   const ANIMACIONES = [
     { valor: "PA_SCROLL_LEFT", nombre: "Desplazamiento a la izquierda" },
@@ -246,6 +249,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         onTableroConfigChange(null);
         // Limpiar formatoMensaje o establecer un valor por defecto seguro
         setFormatoMensaje("TEXTO_PLANO"); 
+        setValoresAtributosJson({});
+        setNuevosValoresAtributosJson({});
         return;
       }
 
@@ -261,7 +266,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         } else {
             setFormatoMensaje("TEXTO_PLANO"); // Fallback por defecto
         }
-
+        setValoresAtributosJson({});
+        setNuevosValoresAtributosJson({});
         // Cargar mensajes del tablero
         const mensajesObtenidos = await obtenerMensajes(tableroSeleccionado);
         setMensajes(mensajesObtenidos);
@@ -286,6 +292,8 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         setTableroInfo(null);
         onTableroConfigChange(null);
         setFormatoMensaje("TEXTO_PLANO"); // Restablecer formato en caso de error
+        setValoresAtributosJson({});
+        setNuevosValoresAtributosJson({});
       } finally {
         setCargando(false);
       }
@@ -293,6 +301,20 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
 
     cargarDataTablero();
   }, [tableroSeleccionado, onTableroConfigChange]); // SOLO tableroSeleccionado como dependencia
+
+  useEffect(() => {
+    if (formatoMensaje === 'JSON' && tableroInfo.atributosJsonTablero.length > 0) {
+      const initialValues = {};
+      tableroInfo.atributosJsonTablero.forEach(attr => {
+        initialValues[attr.clave] = '';
+      });
+      setValoresAtributosJson(initialValues);
+      setNuevosValoresAtributosJson(initialValues);
+    } else {
+      setValoresAtributosJson({}); // Limpiar si no es JSON o no hay atributos
+      setNuevosValoresAtributosJson({});
+    }
+  }, [formatoMensaje]);
 
   // Función para separar las líneas del mensaje
   const obtenerLineasDeMensaje = (mensaje) => {
@@ -327,7 +349,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         let mensajeAEnviar;
         if (formatoMensaje === "TEXTO_PLANO") {
           // Formato de texto plano
-          mensajeAEnviar = `${lineas[0]}|${lineas[1]}|x${mensajes[seleccionado].velocidad}|${mensajes[seleccionado].animacion || "PA_SCROLL_LEFT"}`;
+          mensajeAEnviar = `${lineas[0]}`;
           console.log("🔄 Publicando mensaje (texto plano):", mensajeAEnviar);
           publish(topicCompleto, mensajeAEnviar);
           agregarAMensajeHistorial({
@@ -360,13 +382,13 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           console.log("mensajeJSON: ", mensajeJSON);
 
           console.log("🔄 Publicando mensaje (JSON):", mensajeJSON);
-          publish(topicCompleto, JSON.stringify(mensajeJSON));
-          mensajeAEnviar = JSON.stringify(mensajeJSON);
+          publish(topicCompleto, mensajeJSON);
+          mensajeAEnviar = mensajeJSON;
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
             topico: topicCompleto,
-            mensaje: JSON.stringify(mensajeJSON),
+            mensaje: mensajeJSON,
           });
         } else {
             // Manejar caso de formato desconocido o nulo
@@ -414,9 +436,10 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         showNotification('error', 'Texto vacío', 'Por favor ingresa al menos una línea de texto.');
         return;
       }
-    } else if (currentFormatoMensaje === "JSON") {
-      if (textoPersonalizado1.trim() === "") {
-        showNotification('error', 'Texto vacío', 'Por favor ingresa al menos una línea de texto.');
+     } else if (currentFormatoMensaje === "JSON") {
+      const hasAnyJsonValue = Object.values(valoresAtributosJson).some(value => value.trim() !== "");
+      if (!hasAnyJsonValue) {
+        showNotification('error', 'Valores JSON vacíos', 'Por favor, ingresa al menos un valor para los atributos JSON.');
         return;
       }
     } else {
@@ -424,16 +447,18 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
         return;
     }
 
-    // Verificar límites de caracteres según animación
-    const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
-    if (textoPersonalizado1.length > limiteActual ||
-        (currentFormatoMensaje === "PAPUGRUPO" && textoPersonalizado2.length > limiteActual)) { // Solo validar texto2 si es JSON
-      showNotification(
-        'warning',
-        'Límite excedido',
-        `El mensaje excede el límite de ${limiteActual} caracteres permitidos para esta animación.`
-      );
-      return;
+    if (currentFormatoMensaje !== "JSON") {
+      // Verificar límites de caracteres según animación
+      const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+      if (textoPersonalizado1.length > limiteActual ||
+          (currentFormatoMensaje === "PAPUGRUPO" && textoPersonalizado2.length > limiteActual)) { // Solo validar texto2 si es JSON
+        showNotification(
+          'warning',
+          'Límite excedido',
+          `El mensaje excede el límite de ${limiteActual} caracteres permitidos para esta animación.`
+        );
+        return;
+      }
     }
 
     // Actualizar los textos que se mostrarán localmente
@@ -469,7 +494,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           });
         } else if (currentFormatoMensaje === "TEXTO_PLANO") {
           // Formato texto plano (solo texto1, velocidad, animación)
-          mensajeAPublicar = `${textoPersonalizado1.trim()}|${velocidadPersonalizada.replace('x', '')}`;
+          mensajeAPublicar = `${textoPersonalizado1.trim()}`;
           publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
@@ -482,12 +507,12 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
           mensajeAPublicar = textoPersonalizado1;
           console.log("mensaje a publicar:", mensajeAPublicar)
 
-          publish(topicoTablero, JSON.stringify(mensajeAPublicar));
+          publish(topicoTablero, mensajeAPublicar);
           agregarAMensajeHistorial({
             tablero: tableroInfo?.nombreTablero || "Tablero desconocido",
             hora: new Date().toLocaleTimeString(),
             topico: tableroInfo?.topicoTablero,
-            mensaje: JSON.stringify(mensajeAPublicar),
+            mensaje: mensajeAPublicar,
           });
         } else {
             console.warn(`⚠️ Formato de mensaje del tablero no soportado para publicación personalizada: ${currentFormatoMensaje}`);
@@ -655,10 +680,11 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
       }
       else{
         try {
-          const parsedJson = JSON.parse(nuevoTexto1); 
-          await guardarMensajeJSON({
-              idTableroRef: tableroSeleccionado,
-              JSON: parsedJson
+          await guardarMensaje({
+            idTableroRef: tableroSeleccionado,
+            mensaje: nuevoTexto1,
+            velocidad: velocidadFinal,
+            animacion: nuevaAnimacion
           });
           console.log("Mensaje JSON enviado correctamente.");
       } catch (error) {
@@ -782,6 +808,28 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     }
   }
 
+  // Handler para actualizar el valor de un atributo JSON específico
+  const handleAtributoJsonChange = (clave, valor) => {
+    const valoresAtributos = {
+      ...valoresAtributosJson,
+      [clave]: valor,
+    }
+
+    setValoresAtributosJson(valoresAtributos);
+    setTextoPersonalizado1(JSON.stringify(valoresAtributos));
+  };
+
+  // Handler para actualizar el valor de un atributo JSON específico
+  const handleNuevosAtributoJsonChange = (clave, valor) => {
+    const nuevosValoresAtributos = {
+      ...nuevosValoresAtributosJson,
+      [clave]: valor,
+    }
+
+    setNuevosValoresAtributosJson(nuevosValoresAtributos);
+    setNuevoTexto1(JSON.stringify(nuevosValoresAtributos));
+  };
+  
   return (
     <div className="min-h-screen bg-light text-darkNeutral">
       <Header />
@@ -1082,53 +1130,80 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           </span>
                         )}
                       </div>
+
+                      <label htmlFor="textoPersonalizado2" className="block text-sm font-medium text-gray-700 mb-1">
+                        Línea 2:
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="textoPersonalizado2"
+                          value={textoPersonalizado2}
+                          onChange={(e) => {
+                            const nuevoTexto2 = e.target.value;
+                            const limiteActual = obtenerLimiteCaracteres(animacionPersonalizada);
+                            if (nuevoTexto2.length <= limiteActual) {
+                              setTextoPersonalizado2(nuevoTexto2);
+                            }
+                          }}
+                          maxLength={obtenerLimiteCaracteres(animacionPersonalizada)}
+                          placeholder="Escribe la primera línea aquí..."
+                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                        />
+                        {ANIMACIONES_LIMITE_REDUCIDO.includes(animacionPersonalizada) && (
+                          <span className="absolute right-2 top-2 text-xs text-amber-600 bg-amber-100 px-1 rounded">
+                            Máx: 11 car.
+                          </span>
+                        )}
+                      </div>
                       
                     </>
                   )}
 
-                    {formatoMensaje === "JSON" && (
-                      // Modo JSON: una línea de texto libre para el JSON
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-json-libre">Contenido del Mensaje JSON</label>
-                        <div className="relative">
-                          <input
-                            id="mensaje-json-libre"
-                            type="text"
-                            className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
-                            value={textoPersonalizado1}
-                            onChange={(e) => {
-                                            const nuevoTexto = e.target.value;
-                                                setTextoPersonalizado1(nuevoTexto);
-                            } }
-                            placeholder="Introduce el texto para el mensaje JSON"
-                          />
-                        </div>
-                      </div>
-                    )}
-
+                  {formatoMensaje === "JSON" && (
+                    <div className="mb-4 space-y-3">
+                      <p className="block text-sm font-medium mb-1 text-input-text">Valores para Atributos JSON</p>
+                      {tableroInfo.atributosJsonTablero.length > 0 ? (
+                        tableroInfo.atributosJsonTablero.map((attr) => (
+                          <div key={attr.idAtributo} className="flex flex-col">
+                            <label htmlFor={`json-attr-${attr.clave}`} className="block text-sm font-medium text-gray-700 mb-1">
+                              {attr.clave}:
+                            </label>
+                            <input
+                              type="text"
+                              id={`json-attr-${attr.clave}`}
+                              value={valoresAtributosJson[attr.clave] || ''} // Usar el estado de valoresAtributosJson
+                              onChange={(e) => handleAtributoJsonChange(attr.clave, e.target.value)}
+                              placeholder={`Ingrese valor para ${attr.clave}`}
+                              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Este tablero no tiene atributos JSON definidos.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div >
-
-                  {formatoMensaje != "JSON" && (
+                <div>
+                  {formatoMensaje === "PAPUGRUPO" && (
                     <div className="col-span-2">
-                     <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
-                          Velocidad:
-                        </label>
-                        <select
-                          id="velocidadPersonalizada"
-                          value={velocidadPersonalizada}
-                          onChange={(e) => setVelocidadPersonalizada(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
-                        >
-                          {opcionesVelocidad.map(opcion => (
-                            <option key={opcion} value={opcion}>{opcion}</option>
-                          ))}
-                        </select>
+                      <label htmlFor="velocidadPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                        Velocidad:
+                      </label>
+                      <select
+                        id="velocidadPersonalizada"
+                        value={velocidadPersonalizada}
+                        onChange={(e) => setVelocidadPersonalizada(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                      >
+                        {opcionesVelocidad.map(opcion => (
+                          <option key={opcion} value={opcion}>{opcion}</option>
+                        ))}
+                      </select>
 
-                      {formatoMensaje === "PAPUGRUPO" && (
-                        <>
-                       <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="animacionPersonalizada" className="block text-sm font-medium text-gray-700 mb-1 mt-3">
                         Animación:
                       </label>
                       <select
@@ -1141,12 +1216,7 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           <option key={anim.valor} value={anim.valor}>{anim.nombre}</option>
                         ))}
                       </select>
-                      </>
-                      )}
-
                     </div>
-                  
-                    
                   )}
                 </div>
 
@@ -1367,27 +1437,32 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                       </>
                     )}
 
-                    {formatoMensaje === "JSON" && (
-                      // Modo JSON: una línea de texto libre para el JSON
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-json-libre">Contenido del Mensaje JSON</label>
-                        <div className="relative">
-                          <input
-                            id="mensaje-json-libre"
-                            type="text"
-                            className="w-full border border-border-base rounded px-2 py-1 bg-input-bg text-input-text"
-                            value={nuevoTexto1}
-                            onChange={(e) => {
-                                            const nuevoTexto1 = e.target.value;
-                                                setNuevoTexto1(nuevoTexto1);
-                            } }
-                            placeholder="Introduce el texto para el mensaje JSON"
-                          />
-                        </div>
-                      </div>
-                    )}
+                  {formatoMensaje === "JSON" && (
+                    <div className="mb-4 space-y-3">
+                      <p className="block text-sm font-medium mb-1 text-input-text">Valores para Atributos JSON</p>
+                      {tableroInfo.atributosJsonTablero.length > 0 ? (
+                        tableroInfo.atributosJsonTablero.map((attr) => (
+                          <div key={attr.idAtributo} className="flex flex-col">
+                            <label htmlFor={`nuevo-json-attr-${attr.clave}`} className="block text-sm font-medium text-gray-700 mb-1">
+                              {attr.clave}:
+                            </label>
+                            <input
+                              type="text"
+                              id={`nuevo-json-attr-${attr.clave}`}
+                              value={nuevosValoresAtributosJson[attr.clave] || ''} 
+                              onChange={(e) => handleNuevosAtributoJsonChange(attr.clave, e.target.value)}
+                              placeholder={`Ingrese valor para ${attr.clave}`}
+                              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#109d95]"
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Este tablero no tiene atributos JSON definidos.</p>
+                      )}
+                    </div>
+                  )}
 
-                    {formatoMensaje != "JSON" && (
+                    {formatoMensaje === "PAPUGRUPO" && (
                       <>
                       <div className="mb-4">
                           {/* Label con text-input-text */}
@@ -1399,7 +1474,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                           </select>
                       </div>
 
-                      {formatoMensaje === "PAPUGRUPO" && (
                       <div className="mb-4">
                           {/* Label con text-input-text */}
                           <label className="block text-sm font-medium mb-1 text-input-text" htmlFor="mensaje-animacion">Animación</label>
@@ -1431,7 +1505,6 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
                               ))}
                           </select>
                       </div>
-                      )}
                     </>
                     )}
                     <div className="flex justify-end gap-2 mt-4">
