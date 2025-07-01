@@ -157,8 +157,9 @@ export const editarTablero = async ({ idTablero, nombreTablero, ipTablero, topic
     }
 };
 
-export const borrarTablero = async ({ idTablero}) => {
+export const borrarTablero = async (idTablero) => {
     try {
+        console.log("ID del tablero a eliminar en service:", idTablero);
         const response = await axiosAuth.delete(`api/board/delete-board/${idTablero}`);
         console.log("Tablero eliminado:", response.data);
         return response.data;

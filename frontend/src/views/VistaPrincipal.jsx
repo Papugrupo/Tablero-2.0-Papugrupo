@@ -10,6 +10,7 @@ import { obtenerUsuario } from "../services/usuario.service";
 import ModalNewTablero from "../components/modalNewTablero";
 import { HistMensajes } from "../components/HistMensajes";
 import ModalEditTablero from "../components/modalEditTablero";
+import { stringify } from "postcss";
 
 /** @type {Mensaje[]} */
 
@@ -785,12 +786,14 @@ function VistaPrincipalContent({ onTableroConfigChange }) {
     if (confirmacion) {
       console.log("El usuario confirmó la eliminación.");
       // Se asume que tableroInfo.idTablero está disponible
+
       if (!tableroInfo || !tableroInfo.idTablero) {
         showNotification('error', 'Error', 'No hay tablero seleccionado para eliminar.');
         return;
       }
       setCargando(true);
       try {
+        console.log("Eliminando tablero con ID:", tableroInfo.idTablero);
         await borrarTablero(tableroInfo.idTablero); // La función ahora espera solo el ID
         showNotification('success', 'Eliminado', 'Tablero eliminado exitosamente.');
         // Reiniciar la vista después de la eliminación
